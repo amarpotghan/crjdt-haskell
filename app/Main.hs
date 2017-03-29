@@ -1,6 +1,10 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import Lib
+import Data.Crjdt
 
 main :: IO ()
-main = someFunc
+main = print example
+
+example :: Cmd
+example = Let "x" (Keys Doc)
