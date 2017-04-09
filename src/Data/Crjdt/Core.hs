@@ -104,7 +104,11 @@ newtype Eval a
            , Monad
            , MonadFix
            , MonadError EvalError
+           , MonadState Context
            )
+
+evalEval :: Expr -> Either EvalError Cursor
+evalEval = (`evalState` Context) . runExceptT . runEval . eval
 
 doTag :: a -> Key Void -> Key a
 doTag given (Key key) = TaggedKey (TK given key)
