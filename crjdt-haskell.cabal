@@ -19,6 +19,7 @@ library
                      , Data.Crjdt.Core
   build-depends:       base >= 4.7 && < 5
                      , text
+                     , containers
   default-language:    Haskell2010
 
 executable crjdt-haskell-exe
