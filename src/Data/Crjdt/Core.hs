@@ -107,10 +107,10 @@ newtype Eval a
            )
 
 doTag :: a -> Key Void -> Key a
-doTag given (Key key) = Key given key
+doTag given (Key key) = TaggedKey (TK given key)
 
 appendWith :: Tag -> Key Void -> Cursor -> Cursor
-appendWith tag key (Cursor path final) = Seq (path `mappend` Seq.singleton (doTag tag final)) key
+appendWith tag key (Cursor path final) = Cursor (path `mappend` Seq.singleton (doTag tag final)) key
 
 eval :: (MonadError EvalError m, MonadState Context m) => Expr -> m Result
 eval Doc = pure $ Cursor Seq.empty doc
@@ -118,4 +118,4 @@ eval (GetKey expr key) = do
   cursor <- eval expr
   case finalKey cursor of
     (Key "head") -> throwError GetOnHead
-    _ -> pure (appendWith key cursor)
+    _ -> pure (appendWith MapT key cursor)
