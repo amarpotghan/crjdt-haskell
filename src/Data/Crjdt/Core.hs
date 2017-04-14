@@ -111,15 +111,16 @@ evalEval :: Expr -> Either EvalError Cursor
 evalEval = (`evalState` Context) . runExceptT . runEval . eval
 
 doTag :: a -> Key Void -> Key a
-doTag given (Key key) = TaggedKey (TK given key)
+doTag given (Key k) = tagWith given k
+doTag given (TaggedKey (TK _ k)) = tagWith given k
 
 appendWith :: Tag -> Key Void -> Cursor -> Cursor
-appendWith tag key (Cursor path final) = Cursor (path `mappend` Seq.singleton (doTag tag final)) key
+appendWith t k (Cursor p final) = Cursor (p `mappend` Seq.singleton (doTag t final)) k
 
 eval :: (MonadError EvalError m, MonadState Context m) => Expr -> m Result
 eval Doc = pure $ Cursor Seq.empty doc
-eval (GetKey expr key) = do
+eval (GetKey expr k) = do
   cursor <- eval expr
   case finalKey cursor of
     (Key "head") -> throwError GetOnHead
-    _ -> pure (appendWith MapT key cursor)
+    _ -> pure (appendWith MapT k cursor)
