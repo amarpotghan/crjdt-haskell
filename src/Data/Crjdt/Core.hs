@@ -95,7 +95,9 @@ data Cursor = Cursor
 
 data Context = Context
 
-data EvalError = GetOnHead
+data EvalError
+  = GetOnHead
+  | UndefinedVariable Var
 
 newtype Eval a
   = Eval { runEval :: ExceptT EvalError (State Context) a }
@@ -117,6 +119,9 @@ doTag given (TaggedKey (TK _ k)) = tagWith given k
 appendWith :: Tag -> Key Void -> Cursor -> Cursor
 appendWith t k (Cursor p final) = Cursor (p `mappend` Seq.singleton (doTag t final)) k
 
+lookupCtx :: Var -> Context -> Maybe Cursor
+lookupCtx _ _ = Nothing
+
 eval :: (MonadError EvalError m, MonadState Context m) => Expr -> m Result
 eval Doc = pure $ Cursor Seq.empty doc
 eval (GetKey expr k) = do
@@ -124,3 +129,4 @@ eval (GetKey expr k) = do
   case finalKey cursor of
     (Key "head") -> throwError GetOnHead
     _ -> pure (appendWith MapT k cursor)
+eval (Var var) = get >>= maybe (throwError (UndefinedVariable var)) pure . lookupCtx var
