@@ -16,14 +16,14 @@ import Data.Text
 import Data.String
 import Data.Void
 import Data.Maybe
-import Data.Monoid
+import Data.Sequence (ViewL(..), viewl)
+import qualified Data.Sequence as Seq
+import Data.Map as M
+import Data.Set as Set
+import Data.Foldable (traverse_)
 import Control.Monad.Fix
 import Control.Monad.State
 import Control.Monad.Except
-import Data.Sequence (ViewL(..), viewl)
-import Data.Map as M
-import Data.Set as Set
-import qualified Data.Sequence as Seq
 
 newtype Var = Variable { getName :: Text } deriving (Show, Eq, Ord)
 
@@ -81,7 +81,7 @@ data Cmd
   | Assign Expr Val
   | InsertAfter Expr Val
   | Delete Expr
-  | Yeild
+  | Yield
   | Cmd :> Cmd
   deriving (Show, Eq)
 
@@ -102,8 +102,8 @@ type Result = Cursor
   -- deriving (Show, Eq)
 
 -- DOC
-doc :: Key Tag
-doc = tagWith MapT "doc"
+docKey :: Key Tag
+docKey = tagWith MapT "doc"
 
 tagWith :: tag -> Text -> Key tag
 tagWith t = TaggedKey . TK t
@@ -113,9 +113,16 @@ data Cursor = Cursor
   , finalKey :: Key Void
   } deriving (Show, Eq)
 
+type ReplicaId = Integer
+type GlobalReplicaCounter = Integer
+
 data Context = Context
   { document :: Document Tag
   , variables :: M.Map Var Cursor
+  , replicaId :: ReplicaId
+  , replicaGlobal :: GlobalReplicaCounter
+  , history :: Set Id
+  , queue :: Seq.Seq Operation
   }
 
 data EvalError
@@ -136,14 +143,18 @@ newtype Eval a
            , MonadState Context
            )
 
-initial :: Context
-initial = Context
+initial :: ReplicaId -> Context
+initial rid = Context
   { document = BranchDocument (Branch mempty mempty MapT)
+  , replicaGlobal = 0
   , variables = mempty
+  , replicaId = rid
+  , queue = mempty
+  , history = mempty
   }
 
-evalEval :: Expr -> Either EvalError Cursor
-evalEval = (`evalState` initial) . runExceptT . runEval . eval
+evalEval :: ReplicaId -> Expr -> Either EvalError Cursor
+evalEval rid = (`evalState` (initial rid)) . runExceptT . runEval . eval
 
 unTag :: Key tag -> Key Void
 unTag (Key k) = Key k
@@ -186,7 +197,6 @@ data Id = Id
   , replicaNumber :: Integer
   } deriving (Show, Eq, Ord)
 
-
 data Branch tag = Branch
   { children :: Map Tag (Document tag)
   , presence :: Map (Key Void) (Set Id)
@@ -198,10 +208,58 @@ data RegDocument
 getTag :: Key Tag -> Tag
 getTag (TaggedKey (TK t _)) = t
 
+data Mutation
+  = InsertMutation Val
+  | DeleteMutation
+  | AssignMutation Val
+  deriving (Show, Eq)
+
+data Operation = Operation
+  { opId :: Id
+  , opDeps :: Set.Set Id -- TODO:  version-vectors or dotted-version-vectors
+  , opCur :: Cursor
+  , opMutation :: Mutation
+  } deriving (Eq, Show)
+
 data Document tag
   = BranchDocument (Branch tag)
   | LeafDocument RegDocument
   deriving (Functor, Foldable, Traversable)
+
+addVariable :: Ctx m => Var -> Cursor -> m ()
+addVariable v cur = modify insertVar
+  where insertVar c = c { variables = M.insert v cur (variables c)}
+
+applyOp :: Operation -> Document Tag -> Document Tag
+applyOp _ = error "Not yet implemented"
+
+applyRemote :: Ctx m => m ()
+applyRemote = get >>= process
+  where
+    process c =
+      let alreadyProcessed op = opId op `Set.member` history c
+          satisfiesDeps op = opDeps op `Set.isSubsetOf` history c
+          applyRemote' op = put c
+                            { replicaGlobal = replicaGlobal c `max` (sequenceNumber . opId $ op)
+                            , document = applyOp op (document c)
+                            , history = Set.insert (opId op) (history c)
+                            }
+      in traverse_ applyRemote' $ Seq.filter (liftM2 (&&) alreadyProcessed satisfiesDeps) (queue c)
+
+applyLocal :: Ctx m => Mutation -> Cursor -> m ()
+applyLocal mut cur = modify addOp
+  where
+    addOp c =
+      let op = Operation
+            { opId = Id (replicaGlobal c + 1) (replicaId c)
+            , opDeps = history c
+            , opCur = cur
+            , opMutation = mut
+            }
+      in c { document = applyOp op (document c)
+           , replicaGlobal = replicaGlobal c + 1
+           , history = Set.insert (opId op) (history c)
+           }
 
 stepNext :: Ctx m => Document Tag -> Cursor -> m Cursor
 stepNext d c@(Cursor (viewl -> Seq.EmptyL) (next -> getNextKey)) = get >>= \ctx -> do
@@ -215,7 +273,7 @@ stepNext d c@(Cursor (viewl -> (x :< xs)) _) = maybe (pure c) f (findChild (getT
 stepNext _ c = pure c
 
 eval :: Ctx m => Expr -> m Result
-eval Doc = pure $ Cursor Seq.empty $ unTag doc
+eval Doc = pure $ Cursor Seq.empty $ unTag docKey
 eval (GetKey expr k) = do
   cursor <- eval expr
   case finalKey cursor of
@@ -226,3 +284,11 @@ eval (Iter expr) = appendWith ListT headKey <$> eval expr
 eval (Next expr) = get >>= \(document -> d) -> eval expr >>= stepNext d
 -- TODO: query part. Not yet implemented
 eval values = eval values
+
+execute :: Ctx m => Cmd -> m ()
+execute (Let x expr) = eval expr >>= addVariable (Variable x)
+execute (Assign expr value) = eval expr >>= applyLocal (AssignMutation value)
+execute (InsertAfter expr value) = eval expr >>= applyLocal (InsertMutation value)
+execute (Delete expr) = eval expr >>= applyLocal DeleteMutation
+execute Yield = applyRemote
+execute (cmd1 :> cmd2) = execute cmd1 *> execute cmd2
