@@ -227,39 +227,34 @@ data Document tag
   deriving (Functor, Foldable, Traversable)
 
 addVariable :: Ctx m => Var -> Cursor -> m ()
-addVariable v cur = modify insertVar
-  where insertVar c = c { variables = M.insert v cur (variables c)}
+addVariable v cur = modify $ \c -> c { variables = M.insert v cur (variables c)}
 
 applyOp :: Operation -> Document Tag -> Document Tag
 applyOp _ = error "Not yet implemented"
 
 applyRemote :: Ctx m => m ()
-applyRemote = get >>= process
-  where
-    process c =
-      let alreadyProcessed op = opId op `Set.member` history c
-          satisfiesDeps op = opDeps op `Set.isSubsetOf` history c
-          applyRemote' op = put c
-                            { replicaGlobal = replicaGlobal c `max` (sequenceNumber . opId $ op)
-                            , document = applyOp op (document c)
-                            , history = Set.insert (opId op) (history c)
-                            }
-      in traverse_ applyRemote' $ Seq.filter (liftM2 (&&) alreadyProcessed satisfiesDeps) (queue c)
+applyRemote = get >>= \c ->
+  let alreadyProcessed op = opId op `Set.member` history c
+      satisfiesDeps op = opDeps op `Set.isSubsetOf` history c
+      applyRemote' op = put c
+        { replicaGlobal = replicaGlobal c `max` (sequenceNumber . opId $ op)
+        , document = applyOp op (document c)
+        , history = Set.insert (opId op) (history c)
+        }
+  in traverse_ applyRemote' $ Seq.filter (liftM2 (&&) alreadyProcessed satisfiesDeps) (queue c)
 
 applyLocal :: Ctx m => Mutation -> Cursor -> m ()
-applyLocal mut cur = modify addOp
-  where
-    addOp c =
-      let op = Operation
-            { opId = Id (replicaGlobal c + 1) (replicaId c)
-            , opDeps = history c
-            , opCur = cur
-            , opMutation = mut
-            }
-      in c { document = applyOp op (document c)
-           , replicaGlobal = replicaGlobal c + 1
-           , history = Set.insert (opId op) (history c)
-           }
+applyLocal mut cur = modify $ \c ->
+  let op = Operation
+        { opId = Id (replicaGlobal c + 1) (replicaId c)
+        , opDeps = history c
+        , opCur = cur
+        , opMutation = mut
+        }
+  in c { document = applyOp op (document c)
+       , replicaGlobal = replicaGlobal c + 1
+       , history = Set.insert (opId op) (history c)
+       }
 
 stepNext :: Ctx m => Document Tag -> Cursor -> m Cursor
 stepNext d c@(Cursor (viewl -> Seq.EmptyL) (next -> getNextKey)) = get >>= \ctx -> do
