@@ -247,12 +247,15 @@ clearAny deps key doc =
 clear :: Set Id -> Key Tag -> Document Tag -> (Document Tag, Set Id)
 clear deps key d = clear' (findChild (getTag key) d)
   where
+    {-# INLINE clear' #-}
     clear' Nothing = (d, mempty)
     clear' (Just (LeafDocument reg)) =
       let c = M.filterWithKey (\k _ -> k `Set.notMember` deps) $ values reg
       in (LeafDocument $ RegDocument c, M.keysSet c)
     clear' child@(Just (BranchDocument (Branch  {branchTag = MapT}))) = clearBranch $ clearMap child
     clear' child@(Just (BranchDocument (Branch {branchTag = ListT}))) = clearBranch $ clearList child
+
+    {-# INLINE clearBranch #-}
     clearBranch clearWhich =
       let (d', presence) = clearWhich deps
           newDoc = addChild key d' d
