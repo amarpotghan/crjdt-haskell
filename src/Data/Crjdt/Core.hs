@@ -242,37 +242,34 @@ addVariable v cur = modify $ \c -> c { variables = M.insert v cur (variables c)}
 {-# INLINE addVariable #-}
 
 -- FIXME: State (Document Tag) (Set Id)
-clearElem :: Set Id -> Key Tag -> Document Tag -> (Document Tag, Set Id)
-clearElem deps (unTag -> key) doc =
-  let (doc', presence) = clearAny deps key doc
-      presence' = getPresence key doc'
-      newPresence = Set.union presence presence' Set.\\ deps
-  in (updatePresence key newPresence doc', newPresence)
+clearElem :: Set Id -> Key Tag -> State (Document Tag) (Set Id)
+clearElem deps (unTag -> key) = do
+  presence <- clearAny deps key
+  presence' <- getPresence key <$> get
+  let newPresence = Set.union presence presence' Set.\\ deps
+  modify (updatePresence key newPresence)
+  pure (newPresence)
 
 
-clearAny :: Set Id -> Key Void -> Document Tag -> (Document Tag, Set Id)
-clearAny deps key doc =
-  let (doc', presence) = clear deps (doTag MapT key) doc
-      (doc'', presence') = clear deps (doTag ListT key) doc'
-      (doc''', presence'') = clear deps (doTag RegT key) doc''
-  in (doc''', Set.unions [presence, presence', presence''])
+clearAny :: Set Id -> Key Void -> State (Document Tag) (Set Id)
+clearAny deps key = mconcat <$> traverse clearAll [MapT, ListT, RegT]
+  where clearAll t = clear deps (doTag t key)
 
-clear :: Set Id -> Key Tag -> Document Tag -> (Document Tag, Set Id)
-clear deps key d = clear' (findChild (getTag key) d)
+clear :: Set Id -> Key Tag -> State (Document Tag) (Set Id)
+clear deps key = get >>= (clear' <*> findChild (getTag key))
   where
     {-# INLINE clear' #-}
-    clear' Nothing = (d, mempty)
-    clear' (Just (LeafDocument reg)) =
-      let c = M.filterWithKey (\k _ -> k `Set.notMember` deps) $ values reg
-      in (LeafDocument $ RegDocument c, M.keysSet c)
-    clear' child@(Just (BranchDocument (Branch  {branchTag = MapT}))) = clearBranch $ clearMap child
-    clear' child@(Just (BranchDocument (Branch {branchTag = ListT}))) = clearBranch $ clearList child
+    clear' _ Nothing = pure mempty
+    clear' _ (Just (LeafDocument reg)) = put (LeafDocument $ RegDocument c) *> pure (M.keysSet c)
+      where c = M.filterWithKey (\k _ -> k `Set.notMember` deps) $ values reg
+    clear' d child@(Just (BranchDocument (Branch  {branchTag = MapT}))) = clearBranch d $ clearMap child
+    clear' d child@(Just (BranchDocument (Branch {branchTag = ListT}))) = clearBranch d $ clearList child
 
     {-# INLINE clearBranch #-}
-    clearBranch clearWhich =
-      let (d', presence) = clearWhich deps
-          newDoc = addChild key d' d
-      in (newDoc, presence)
+    clearBranch d clearWhich = do
+      presence <- clearWhich deps
+      modify (\d' -> addChild key d' d)
+      pure presence
 
 addChild :: Key Tag -> Document Tag -> Document Tag -> Document Tag
 addChild key _ d@(LeafDocument _) = d
