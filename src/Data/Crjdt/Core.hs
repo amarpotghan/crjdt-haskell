@@ -182,6 +182,7 @@ type Ctx m = (MonadError EvalError m, MonadState Context m)
 -- still avoiding lens, but almost there :-)
 findChild :: Tag -> Document Tag -> Maybe (Document Tag)
 findChild t (BranchDocument (Branch c _ ListT)) = M.lookup t c
+findChild t (BranchDocument (Branch c _ MapT)) = M.lookup t c
 findChild _ _ = Nothing
 
 lookupCtx :: Var -> Context -> Maybe Cursor
