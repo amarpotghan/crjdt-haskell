@@ -207,6 +207,13 @@ data Branch tag = Branch
   , branchTag :: tag
   } deriving (Functor, Foldable, Traversable)
 
+updatePresence :: Key Void -> Set Id -> Document tag -> Document tag
+updatePresence key (Set.null -> True) (BranchDocument b) = BranchDocument b
+  { presence = M.delete key (presence b) }
+updatePresence key newPresence (BranchDocument b) = BranchDocument b
+  { presence = M.insert key newPresence $ presence b }
+updatePresence _ _ d = d
+
 data RegDocument = RegDocument { values :: M.Map Id Val }
 
 getTag :: Key Tag -> Tag
@@ -234,8 +241,14 @@ addVariable :: Ctx m => Var -> Cursor -> m ()
 addVariable v cur = modify $ \c -> c { variables = M.insert v cur (variables c)}
 {-# INLINE addVariable #-}
 
-clearElem :: Set Id -> Key Tag -> Document Tag -> Document Tag
-clearElem deps key doc = _x
+-- FIXME: State (Document Tag) (Set Id)
+clearElem :: Set Id -> Key Tag -> Document Tag -> (Document Tag, Set Id)
+clearElem deps (unTag -> key) doc =
+  let (doc', presence) = clearAny deps key doc
+      presence' = getPresence key doc'
+      newPresence = Set.union presence presence' Set.\\ deps
+  in (updatePresence key newPresence doc', newPresence)
+
 
 clearAny :: Set Id -> Key Void -> Document Tag -> (Document Tag, Set Id)
 clearAny deps key doc =
@@ -271,8 +284,7 @@ clearList child deps = error "Implement me"
 addId :: Mutation -> Key Tag -> Id -> Document Tag -> Document Tag
 addId DeleteMutation _ _ d = d
 addId _ t i (BranchDocument b) = BranchDocument b
-  { presence = M.alter (maybe (Just $ Set.singleton i) (Just . Set.insert i)) (unTag t) $ presence b
-  }
+  { presence = M.alter (maybe (Just $ Set.singleton i) (Just . Set.insert i)) (unTag t) $ presence b }
 
 applyOp :: Operation -> Document Tag -> Document Tag
 applyOp op d = case (path $ opCur op) of
