@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -232,8 +233,20 @@ addVariable :: Ctx m => Var -> Cursor -> m ()
 addVariable v cur = modify $ \c -> c { variables = M.insert v cur (variables c)}
 {-# INLINE addVariable #-}
 
+clearElem :: Set Id -> Key Tag -> Document Tag -> Document Tag
+clearElem deps key doc = _x
+
+addId :: Mutation -> Key Tag -> Id -> Document Tag -> Document Tag
+addId DeleteMutation _ _ d = d
+addId _ t i (BranchDocument b) = BranchDocument b
+  { presence = M.alter (maybe (Just $ Set.singleton i) (Just . Set.insert i)) (unTag t) $ presence b
+  }
+
 applyOp :: Operation -> Document Tag -> Document Tag
-applyOp _ = error "Not yet implemented"
+applyOp op d = case (path $ opCur op) of
+  (viewl -> EmptyL) -> case op of
+    Operation {opMutation = AssignMutation val, ..} ->
+      _x
 
 applyRemote :: Ctx m => m ()
 applyRemote = get >>= \c ->
