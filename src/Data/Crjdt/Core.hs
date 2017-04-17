@@ -1,12 +1,12 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
@@ -123,6 +123,7 @@ data Context = Context
   , replicaGlobal :: GlobalReplicaCounter
   , history :: Set Id
   , queue :: Seq.Seq Operation
+  , received :: Seq.Seq Operation
   }
 
 data EvalError
@@ -151,6 +152,7 @@ initial rid = Context
   , replicaId = rid
   , queue = mempty
   , history = mempty
+  , received = mempty
   }
 
 evalEval :: ReplicaId -> Expr -> Either EvalError Cursor
@@ -241,7 +243,7 @@ applyRemote = get >>= \c ->
         , document = applyOp op (document c)
         , history = Set.insert (opId op) (history c)
         }
-  in traverse_ applyRemote' $ Seq.filter (liftM2 (&&) alreadyProcessed satisfiesDeps) (queue c)
+  in traverse_ applyRemote' $ Seq.filter (liftM2 (&&) alreadyProcessed satisfiesDeps) (received c)
 
 applyLocal :: Ctx m => Mutation -> Cursor -> m ()
 applyLocal mut cur = modify $ \c ->
@@ -254,6 +256,7 @@ applyLocal mut cur = modify $ \c ->
   in c { document = applyOp op (document c)
        , replicaGlobal = replicaGlobal c + 1
        , history = Set.insert (opId op) (history c)
+       , queue = queue c Seq.|> op
        }
 
 stepNext :: Ctx m => Document Tag -> Cursor -> m Cursor
