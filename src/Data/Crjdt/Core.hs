@@ -237,6 +237,34 @@ addVariable v cur = modify $ \c -> c { variables = M.insert v cur (variables c)}
 clearElem :: Set Id -> Key Tag -> Document Tag -> Document Tag
 clearElem deps key doc = _x
 
+clearAny :: Set Id -> Key Void -> Document Tag -> (Document Tag, Set Id)
+clearAny deps key doc =
+  let (doc', presence) = clear deps (doTag MapT key) doc
+      (doc'', presence') = clear deps (doTag ListT key) doc'
+      (doc''', presence'') = clear deps (doTag RegT key) doc''
+  in (doc''', Set.unions [presence, presence', presence''])
+
+clear :: Set Id -> Key Tag -> Document Tag -> (Document Tag, Set Id)
+clear deps key d = clear' (findChild (getTag key) d)
+  where
+    clear' Nothing = (d, mempty)
+    clear' (Just (LeafDocument reg)) =
+      let c = M.filterWithKey (\k _ -> k `Set.notMember` deps) $ values reg
+      in (LeafDocument $ RegDocument c, M.keysSet c)
+    clear' child@(Just (BranchDocument (Branch  {branchTag = MapT}))) = clearBranch $ clearMap child
+    clear' child@(Just (BranchDocument (Branch {branchTag = ListT}))) = clearBranch $ clearList child
+    clearBranch clearWhich =
+      let (d', presence) = clearWhich deps
+          newDoc = addChild key d' d
+      in (newDoc, presence)
+
+addChild :: Key Tag -> Document Tag -> Document Tag -> Document Tag
+addChild key _ d@(LeafDocument _) = d
+addChild key child (BranchDocument d) = BranchDocument d { children = M.insert (getTag key) child (children d)}
+
+clearMap child deps = error "Implement me"
+clearList child deps = error "Implement me"
+
 addId :: Mutation -> Key Tag -> Id -> Document Tag -> Document Tag
 addId DeleteMutation _ _ d = d
 addId _ t i (BranchDocument b) = BranchDocument b
