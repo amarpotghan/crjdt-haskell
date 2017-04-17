@@ -206,7 +206,7 @@ data Branch tag = Branch
   , branchTag :: tag
   } deriving (Functor, Foldable, Traversable)
 
-data RegDocument
+data RegDocument = RegDocument { values :: M.Map Id Val }
 
 getTag :: Key Tag -> Tag
 getTag (TaggedKey (TK t _)) = t
