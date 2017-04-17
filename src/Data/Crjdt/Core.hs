@@ -230,6 +230,7 @@ data Document tag
 
 addVariable :: Ctx m => Var -> Cursor -> m ()
 addVariable v cur = modify $ \c -> c { variables = M.insert v cur (variables c)}
+{-# INLINE addVariable #-}
 
 applyOp :: Operation -> Document Tag -> Document Tag
 applyOp _ = error "Not yet implemented"
@@ -244,6 +245,7 @@ applyRemote = get >>= \c ->
         , history = Set.insert (opId op) (history c)
         }
   in traverse_ applyRemote' $ Seq.filter (liftM2 (&&) alreadyProcessed satisfiesDeps) (received c)
+{-# INLINE applyRemote #-}
 
 applyLocal :: Ctx m => Mutation -> Cursor -> m ()
 applyLocal mut cur = modify $ \c ->
@@ -258,6 +260,7 @@ applyLocal mut cur = modify $ \c ->
        , history = Set.insert (opId op) (history c)
        , queue = queue c Seq.|> op
        }
+{-# INLINE applyLocal #-}
 
 stepNext :: Ctx m => Document Tag -> Cursor -> m Cursor
 stepNext d c@(Cursor (viewl -> Seq.EmptyL) (next -> getNextKey)) = get >>= \ctx -> do
