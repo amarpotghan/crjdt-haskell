@@ -245,7 +245,7 @@ clearElem :: Set Id -> Key Void -> State (Document Tag) (Set Id)
 clearElem deps key = do
   presence <- clearAny deps key
   presence' <- getPresence key <$> get
-  let newPresence = Set.union presence presence' Set.\\ deps
+  let newPresence = presence `mappend` presence' Set.\\ deps
   modify (updatePresence key newPresence)
   pure (newPresence)
 
