@@ -275,6 +275,7 @@ addChild :: Key Tag -> Document Tag -> Document Tag -> Document Tag
 addChild key _ d@(LeafDocument _) = d
 addChild key child (BranchDocument d) = BranchDocument d { children = M.insert (getTag key) child (children d)}
 
+clearMap :: Document Tag -> Set Id -> State (Document Tag) (Set Id)
 clearMap child deps = error "Implement me"
 clearList child deps = error "Implement me"
 
