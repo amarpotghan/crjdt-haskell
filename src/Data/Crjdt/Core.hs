@@ -33,24 +33,28 @@ instance IsString Var where
 
 data TaggedKey tag = TK
   { tag :: tag
-  , key :: Text
+  , key :: BasicKey
   } deriving (Eq, Show, Functor, Foldable, Traversable)
 
 instance Eq tag => Ord (TaggedKey tag) where
   compare (TK _ k1) (TK _ k2) = k1 `compare` k2
 
 data Key tag where
-  Key :: Text -> Key Void
+  Key :: BasicKey -> Key Void
   TaggedKey :: TaggedKey tag -> Key tag
 
-instance Eq tag => Ord (Key tag) where
-  compare (Key k1) (Key k2) = k1 `compare` k2
-  compare (TaggedKey k1) (TaggedKey k2) = k1 `compare` k2
-  compare (TaggedKey (TK _ k1)) (Key k2) = k1 `compare` k2
-  compare (Key k1) (TaggedKey (TK _ k2)) = k1 `compare` k2
+data BasicKey
+  = DocKey
+  | Head
+  | Tail
+  | I Id
+  | Str Text
+  deriving (Show, Eq, Ord)
+
+deriving instance Eq tag => Ord (Key tag)
 
 instance IsString (Key Void) where
-  fromString = Key . fromString
+  fromString = Key . Str . fromString
 
 instance Show tag => Show (Key tag) where
   show (Key t) = show t
@@ -104,9 +108,9 @@ type Result = Cursor
 
 -- DOC
 docKey :: Key Tag
-docKey = tagWith MapT "doc"
+docKey = tagWith MapT DocKey
 
-tagWith :: tag -> Text -> Key tag
+tagWith :: tag -> BasicKey -> Key tag
 tagWith t = TaggedKey . TK t
 
 data Cursor = Cursor
@@ -249,7 +253,6 @@ clearElem deps key = do
   modify (updatePresence key newPresence)
   pure (newPresence)
 
-
 clearAny :: Set Id -> Key Void -> State (Document Tag) (Set Id)
 clearAny deps key = mconcat <$> traverse clearAll [MapT, ListT, RegT]
   where clearAll t = clear deps (reTag t key)
@@ -286,6 +289,7 @@ clearMap child deps = put child *> clearMap' mempty
               pure (p1 `mappend` p2)
         allKeys (BranchDocument (Branch {branchTag = MapT, ..})) = keysSet children
         allKeys _ = mempty
+
 clearList child deps = error "Implement me"
 
 addId :: Mutation -> Key Tag -> Id -> Document Tag -> Document Tag
@@ -342,7 +346,7 @@ eval Doc = pure $ Cursor Seq.empty $ unTag docKey
 eval (GetKey expr k) = do
   cursor <- eval expr
   case finalKey cursor of
-    (Key "head") -> throwError GetOnHead
+    (Key Head) -> throwError GetOnHead
     _ -> pure (appendWith MapT k cursor)
 eval (Var var) = get >>= maybe (throwError (UndefinedVariable var)) pure . lookupCtx var
 eval (Iter expr) = appendWith ListT headKey <$> eval expr
