@@ -262,8 +262,8 @@ clear deps key = get >>= (clear' <*> findChild (getTag key))
     clear' _ Nothing = pure mempty
     clear' _ (Just (LeafDocument reg)) = put (LeafDocument $ RegDocument c) *> pure (M.keysSet c)
       where c = M.filterWithKey (\k _ -> k `Set.notMember` deps) $ values reg
-    clear' d child@(Just (BranchDocument (Branch  {branchTag = MapT}))) = clearBranch d $ clearMap child
-    clear' d child@(Just (BranchDocument (Branch {branchTag = ListT}))) = clearBranch d $ clearList child
+    clear' d (Just child@(BranchDocument (Branch  {branchTag = MapT}))) = clearBranch d $ clearMap child
+    clear' d (Just child@(BranchDocument (Branch {branchTag = ListT}))) = clearBranch d $ clearList child
 
     {-# INLINE clearBranch #-}
     clearBranch d clearWhich = do
