@@ -151,7 +151,7 @@ newtype Eval a
 
 initial :: ReplicaId -> Context
 initial rid = Context
-  { document = BranchDocument (Branch mempty mempty MapT)
+  { document = BranchDocument (Branch mempty mempty mempty MapT)
   , replicaGlobal = 0
   , variables = mempty
   , replicaId = rid
@@ -185,20 +185,21 @@ type Ctx m = (MonadError EvalError m, MonadState Context m)
 
 -- still avoiding lens, but almost there :-)
 findChild :: Key Tag -> Document Tag -> Maybe (Document Tag)
-findChild t (BranchDocument (Branch c _ ListT)) = M.lookup t c
-findChild t (BranchDocument (Branch c _ MapT)) = M.lookup t c
+findChild t (BranchDocument (Branch {branchTag = ListT, ..})) = M.lookup t children
+findChild t (BranchDocument (Branch {branchTag = MapT, ..})) = M.lookup t children
 findChild _ _ = Nothing
 
 lookupCtx :: Var -> Context -> Maybe Cursor
 lookupCtx v = M.lookup v . variables
 
 getPresence :: Key Void -> Document Tag -> Set Id
-getPresence k (BranchDocument (Branch _ ps ListT)) = fromMaybe mempty (M.lookup k ps)
+getPresence k (BranchDocument (Branch {branchTag = ListT, ..})) = fromMaybe mempty (M.lookup k presence)
 getPresence _ _ = mempty
 
-next :: Key Void -> Document Tag -> Key Void
-next _ (BranchDocument (Branch _ _ ListT)) = tailKey
-next _ _ = tailKey
+next :: Key Void -> Document Tag -> BasicKey
+next (Key key) (BranchDocument (Branch {branchTag = ListT, ..})) = fromMaybe Tail $
+  M.lookup key keyOrder
+next _ _ = Tail
 
 data Id = Id
   { sequenceNumber :: Integer
@@ -208,6 +209,7 @@ data Id = Id
 data Branch tag = Branch
   { children :: Map (Key tag) (Document tag)
   , presence :: Map (Key Void) (Set Id)
+  , keyOrder :: Map BasicKey BasicKey
   , branchTag :: tag
   }
 
@@ -290,7 +292,14 @@ clearMap child deps = put child *> clearMap' mempty
         allKeys (BranchDocument (Branch {branchTag = MapT, ..})) = keysSet children
         allKeys _ = mempty
 
-clearList child deps = error "Implement me"
+clearList child deps = put child *> clearList' Head
+  where clearList' tail = pure mempty
+        clearList' hasMore = do
+          nextt <- next (Key hasMore) <$> get
+          p1 <- clearElem deps (Key nextt)
+          p2 <- clearList' nextt
+          pure (p1 `mappend` p2)
+
 
 addId :: Mutation -> Key Tag -> Id -> Document Tag -> Document Tag
 addId DeleteMutation _ _ d = d
@@ -332,7 +341,7 @@ applyLocal mut cur = modify $ \c ->
 
 stepNext :: Ctx m => Document Tag -> Cursor -> m Cursor
 stepNext d c@(Cursor (viewl -> Seq.EmptyL) (next -> getNextKey)) = get >>= \ctx -> do
-  let nextKey = getNextKey (document ctx)
+  let nextKey = Key $ getNextKey (document ctx)
   case (nextKey /= tailKey, Set.null (getPresence nextKey (document ctx))) of
     (True, True) -> pure (Cursor mempty nextKey)
     (True, False) -> stepNext d (Cursor mempty nextKey)
