@@ -202,10 +202,10 @@ data Id = Id
   } deriving (Show, Eq, Ord)
 
 data Branch tag = Branch
-  { children :: Map Tag (Document tag)
+  { children :: Map (Key tag) (Document tag)
   , presence :: Map (Key Void) (Set Id)
   , branchTag :: tag
-  } deriving (Functor, Foldable, Traversable)
+  }
 
 updatePresence :: Key Void -> Set Id -> Document tag -> Document tag
 updatePresence key (Set.null -> True) (BranchDocument b) = BranchDocument b
@@ -235,15 +235,14 @@ data Operation = Operation
 data Document tag
   = BranchDocument (Branch tag)
   | LeafDocument RegDocument
-  deriving (Functor, Foldable, Traversable)
 
 addVariable :: Ctx m => Var -> Cursor -> m ()
 addVariable v cur = modify $ \c -> c { variables = M.insert v cur (variables c)}
 {-# INLINE addVariable #-}
 
 -- FIXME: State (Document Tag) (Set Id)
-clearElem :: Set Id -> Key Tag -> State (Document Tag) (Set Id)
-clearElem deps (unTag -> key) = do
+clearElem :: Set Id -> Key Void -> State (Document Tag) (Set Id)
+clearElem deps key = do
   presence <- clearAny deps key
   presence' <- getPresence key <$> get
   let newPresence = Set.union presence presence' Set.\\ deps
