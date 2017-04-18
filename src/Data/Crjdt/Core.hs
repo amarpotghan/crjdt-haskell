@@ -163,12 +163,12 @@ unTag :: Key tag -> Key Void
 unTag (Key k) = Key k
 unTag (TaggedKey (TK _ k)) = Key k
 
-doTag :: a -> Key Void -> Key a
-doTag given (Key k) = tagWith given k
-doTag given (TaggedKey (TK _ k)) = tagWith given k
+reTag :: a -> Key Void -> Key a
+reTag given (Key k) = tagWith given k
+reTag given (TaggedKey (TK _ k)) = tagWith given k
 
 appendWith :: Tag -> Key Void -> Cursor -> Cursor
-appendWith t k (Cursor p final) = Cursor (p `mappend` Seq.singleton (doTag t final)) k
+appendWith t k (Cursor p final) = Cursor (p `mappend` Seq.singleton (reTag t final)) k
 
 -- Avoiding lens dependency for now
 setFinalKey :: Cursor -> Key Void -> Cursor
@@ -252,7 +252,7 @@ clearElem deps key = do
 
 clearAny :: Set Id -> Key Void -> State (Document Tag) (Set Id)
 clearAny deps key = mconcat <$> traverse clearAll [MapT, ListT, RegT]
-  where clearAll t = clear deps (doTag t key)
+  where clearAll t = clear deps (reTag t key)
 
 clear :: Set Id -> Key Tag -> State (Document Tag) (Set Id)
 clear deps key = get >>= (clear' <*> findChild key)
