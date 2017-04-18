@@ -180,7 +180,7 @@ setPath c newpath = c { path = newpath }
 type Ctx m = (MonadError EvalError m, MonadState Context m)
 
 -- still avoiding lens, but almost there :-)
-findChild :: Tag -> Document Tag -> Maybe (Document Tag)
+findChild :: Key Tag -> Document Tag -> Maybe (Document Tag)
 findChild t (BranchDocument (Branch c _ ListT)) = M.lookup t c
 findChild t (BranchDocument (Branch c _ MapT)) = M.lookup t c
 findChild _ _ = Nothing
@@ -255,7 +255,7 @@ clearAny deps key = mconcat <$> traverse clearAll [MapT, ListT, RegT]
   where clearAll t = clear deps (doTag t key)
 
 clear :: Set Id -> Key Tag -> State (Document Tag) (Set Id)
-clear deps key = get >>= (clear' <*> findChild (getTag key))
+clear deps key = get >>= (clear' <*> findChild key)
   where
     {-# INLINE clear' #-}
     clear' _ Nothing = pure mempty
@@ -323,7 +323,7 @@ stepNext d c@(Cursor (viewl -> Seq.EmptyL) (next -> getNextKey)) = get >>= \ctx 
     (True, True) -> pure (Cursor mempty nextKey)
     (True, False) -> stepNext d (Cursor mempty nextKey)
     (False, _) -> pure c
-stepNext d c@(Cursor (viewl -> (x :< xs)) _) = maybe (pure c) f (findChild (getTag x) d)
+stepNext d c@(Cursor (viewl -> (x :< xs)) _) = maybe (pure c) f (findChild x d)
   where f = fmap (setFinalKey c . finalKey) . (`stepNext` (setPath c xs))
 stepNext _ c = pure c
 
