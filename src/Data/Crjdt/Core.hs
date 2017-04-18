@@ -272,10 +272,20 @@ clear deps key = get >>= (clear' <*> findChild key)
 
 addChild :: Key Tag -> Document Tag -> Document Tag -> Document Tag
 addChild key _ d@(LeafDocument _) = d
-addChild key child (BranchDocument d) = BranchDocument d { children = M.insert (getTag key) child (children d)}
+addChild key child (BranchDocument d) = BranchDocument d { children = M.insert key child (children d)}
 
-clearMap :: Document Tag -> Set Id -> State (Document Tag) (Set Id)
-clearMap child deps = error "Implement me"
+clearMap, clearList :: Document Tag -> Set Id -> State (Document Tag) (Set Id)
+clearMap child deps = put child *> clearMap' mempty
+  where clearMap' acc = do
+          mapKeys <- allKeys <$> get
+          case Set.toList (mapKeys Set.\\ acc) of
+            [] -> pure mempty
+            (k: _) -> do
+              p1 <- clearElem deps (unTag k)
+              p2 <- clearMap' (Set.insert k acc)
+              pure (p1 `mappend` p2)
+        allKeys (BranchDocument (Branch {branchTag = MapT, ..})) = keysSet children
+        allKeys _ = mempty
 clearList child deps = error "Implement me"
 
 addId :: Mutation -> Key Tag -> Id -> Document Tag -> Document Tag
