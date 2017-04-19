@@ -273,6 +273,7 @@ clear deps key = get >>= (clear' <*> findChild key)
       where c = M.filterWithKey (\k _ -> k `Set.notMember` deps) $ values reg
     clear' d (Just child@(BranchDocument (Branch  {branchTag = MapT}))) = clearBranch d $ clearMap child
     clear' d (Just child@(BranchDocument (Branch {branchTag = ListT}))) = clearBranch d $ clearList child
+    clear' _ _ = pure mempty -- this should never happen. TODO: Capture this in type of Document.
 
     {-# INLINE clearBranch #-}
     clearBranch d clearWhich = do
