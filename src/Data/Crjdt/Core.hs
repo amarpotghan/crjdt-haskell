@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE ConstraintKinds #-}
@@ -269,19 +269,19 @@ clearAny deps key = mconcat <$> traverse clearAll [MapT, ListT, RegT]
 clear :: Set Id -> Key Tag -> State (Document Tag) (Set Id)
 clear deps key = get >>= (clear' <*> findChild key)
   where
-    {-# INLINE clear' #-}
     clear' _ Nothing = pure mempty
     clear' _ (Just (LeafDocument reg)) = put (LeafDocument $ RegDocument c) *> pure (M.keysSet c)
       where c = M.filterWithKey (\k _ -> k `Set.notMember` deps) $ values reg
     clear' d (Just child@(BranchDocument (Branch  {branchTag = MapT}))) = clearBranch d $ clearMap child
     clear' d (Just child@(BranchDocument (Branch {branchTag = ListT}))) = clearBranch d $ clearList child
     clear' _ _ = pure mempty -- this should never happen. TODO: Capture this in type of Document.
+    {-# INLINE clear' #-}
 
-    {-# INLINE clearBranch #-}
     clearBranch d clearWhich = do
       presence <- clearWhich deps
       modify (\d' -> addChild key d' d)
       pure presence
+    {-# INLINE clearBranch #-}
 
 addChild :: Key Tag -> Document Tag -> Document Tag -> Document Tag
 addChild _ _ d@(LeafDocument _) = d
