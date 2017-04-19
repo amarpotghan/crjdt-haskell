@@ -1,5 +1,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE ConstraintKinds #-}
@@ -358,11 +359,30 @@ applyOp o@Operation{..} d = case viewl (path opCur) of
             { opCur = setPath mempty . setFinalKey (finalKey opCur)$  opCur } d
         insert' _ = d
     DeleteMutation -> execState (clearElem opDeps (finalKey opCur)) d
+
   (x :< xs) ->
     let c = childGet x d
         child = applyOp (o {opCur = setPath xs opCur}) c
         newDoc = addId opMutation x opId d
     in addChild x child newDoc
+
+valuesOf :: Ctx m => Expr -> m [Val]
+valuesOf e = partsOf e RegT $ \case
+  (LeafDocument l) -> M.elems (values l)
+  _ -> mempty
+
+keysOf :: Ctx m => Expr -> m (Set.Set (Key Void))
+keysOf e = partsOf e MapT $ \case
+  (BranchDocument (Branch{branchTag = MapT,..})) -> M.keysSet $ M.filter (not . Set.null) presence
+  _ -> mempty
+
+partsOf :: (Ctx m, Monoid a) => Expr -> Tag -> (Document Tag -> a) -> m a
+partsOf e tag f = eval e >>= \c -> partsOf' c f . document <$> get
+  where
+    partsOf' :: Monoid m => Cursor -> (Document Tag -> m) -> Document Tag -> m
+    partsOf' Cursor{..} getParts d = case viewl path of
+      EmptyL -> maybe mempty getParts $ findChild (tagWith tag $ basicKey finalKey) d
+      (x :< xs) -> maybe mempty (partsOf' (Cursor xs finalKey) getParts) $ findChild x d
 
 applyRemote :: Ctx m => m ()
 applyRemote = get >>= \c ->
