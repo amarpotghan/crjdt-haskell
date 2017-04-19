@@ -39,6 +39,7 @@ data TaggedKey tag = TK
 instance Eq tag => Ord (TaggedKey tag) where
   compare (TK _ k1) (TK _ k2) = k1 `compare` k2
 
+-- TODO: rethink about this type
 data Key tag where
   Key :: BasicKey -> Key Void
   TaggedKey :: TaggedKey tag -> Key tag
