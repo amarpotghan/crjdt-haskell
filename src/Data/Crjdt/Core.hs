@@ -226,7 +226,7 @@ updatePresence key newPresence (BranchDocument b) = BranchDocument b
   { presence = M.insert key newPresence $ presence b }
 updatePresence _ _ d = d
 
-data RegDocument = RegDocument { values :: M.Map Id Val }
+newtype RegDocument = RegDocument { values :: M.Map Id Val } deriving (Monoid)
 
 getTag :: Key Tag -> Tag
 getTag (TaggedKey (TK t _)) = t
