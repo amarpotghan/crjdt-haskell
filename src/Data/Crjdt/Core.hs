@@ -293,7 +293,7 @@ clearMap child deps = put child *> clearMap' mempty
         allKeys _ = mempty
 
 clearList child deps = put child *> clearList' Head
-  where clearList' tail = pure mempty
+  where clearList' Tail = pure mempty
         clearList' hasMore = do
           nextt <- next (Key hasMore) <$> get
           p1 <- clearElem deps (Key nextt)
