@@ -21,6 +21,7 @@ library
                      , text
                      , containers
                      , mtl
+                     , smallcheck
   default-language:    Haskell2010
 
 executable crjdt-haskell-exe

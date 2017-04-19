@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -10,6 +11,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Data.Crjdt.Core where
@@ -23,19 +25,28 @@ import qualified Data.Sequence as Seq
 import Data.Map as M
 import Data.Set as Set
 import Data.Foldable (traverse_)
+import GHC.Generics
 import Control.Monad.Fix
 import Control.Monad.State
 import Control.Monad.Except
+import Test.SmallCheck
+import Test.SmallCheck.Series
 
 newtype Var = Variable { getName :: Text } deriving (Show, Eq, Ord)
+
+instance Monad m => Serial m Var where
+  series = newtypeCons (Variable .  pack)
 
 instance IsString Var where
   fromString = Variable . fromString
 
 data TaggedKey tag = TK
-  { tag :: tag
-  , key :: BasicKey
+  { tag :: !tag
+  , key :: !BasicKey
   } deriving (Eq, Show, Functor, Foldable, Traversable)
+
+instance Serial m tag => Serial m (TaggedKey tag) where
+  series = cons2 TK
 
 instance Eq tag => Ord (TaggedKey tag) where
   compare (TK _ k1) (TK _ k2) = k1 `compare` k2
@@ -45,6 +56,9 @@ data Key tag where
   Key :: BasicKey -> Key Void
   TaggedKey :: TaggedKey tag -> Key tag
 
+instance Monad m => Serial m (Key Void) where
+  series = Key <$> series
+
 data BasicKey
   = DocKey
   | Head
@@ -52,6 +66,9 @@ data BasicKey
   | I Id
   | Str Text
   deriving (Show, Eq, Ord)
+
+instance Monad m => Serial m BasicKey where
+  series = cons0 DocKey \/ cons0 Head \/ cons0 Tail \/ cons1 I \/ cons1 (Str . pack)
 
 deriving instance Eq tag => Ord (Key tag)
 
@@ -74,6 +91,9 @@ data Tag
   | RegT
   deriving (Show, Eq, Ord)
 
+instance Monad m => Serial m Tag where
+  series = cons0 MapT \/ cons0 ListT \/ cons0 RegT
+
 data Val
   = Number Int
   | StringLit Text
@@ -83,24 +103,41 @@ data Val
   | EmptyArray
   deriving (Show, Eq)
 
+instance Monad m => Serial m Val where
+  series =
+    cons1 Number \/
+    (StringLit . pack <$> series) \/
+    cons1 BoolLit \/
+    cons0 Null \/
+    cons0 EmptyObject \/
+    cons0 EmptyArray
+
 data Cmd
-  = Let Text Expr
-  | Assign Expr Val
-  | InsertAfter Expr Val
-  | Delete Expr
+  = Let !Text !Expr
+  | Assign !Expr !Val
+  | InsertAfter !Expr !Val
+  | Delete !Expr
   | Yield
-  | Cmd :> Cmd
+  | !Cmd :> !Cmd
   deriving (Show, Eq)
 
 data Expr
   = Doc
-  | Var Var
+  | Var !Var
   -- | Keys Expr
   -- | Values Expr
-  | Iter Expr
-  | Next Expr
-  | GetKey Expr (Key Void)
-  deriving (Show, Eq)
+  | Iter !Expr
+  | Next !Expr
+  | GetKey !Expr !(Key Void)
+  deriving (Show, Eq, Generic)
+
+instance Monad m => Serial m Expr where
+  series =
+    cons1 Var \/
+    cons0 Doc \/
+    cons1 Iter \/
+    cons1 Next \/
+    cons2 GetKey
 
 type Result = Cursor
   -- = Ks [Key Void]
@@ -214,6 +251,9 @@ data Id = Id
   { sequenceNumber :: Integer
   , replicaNumber :: Integer
   } deriving (Show, Eq, Ord)
+
+instance Monad m => Serial m Id where
+  series = cons2 Id
 
 data Branch tag = Branch
   { children :: Map (Key tag) (Document tag)
