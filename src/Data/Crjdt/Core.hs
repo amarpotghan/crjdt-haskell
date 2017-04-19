@@ -356,6 +356,10 @@ applyOp o@Operation{..} d = case viewl (path opCur) of
           | opId > kid = applyOp o
             { opCur = opCur { path = mempty, finalKey = finalKey opCur }} d
         insert' _ = d
+    DeleteMutation -> execState (clearElem opDeps (finalKey opCur)) d
+
+
+
 
 applyRemote :: Ctx m => m ()
 applyRemote = get >>= \c ->
