@@ -113,6 +113,10 @@ docKey = tagWith MapT DocKey
 tagWith :: tag -> BasicKey -> Key tag
 tagWith t = TaggedKey . TK t
 
+basicKey :: Key tag -> BasicKey
+basicKey (Key k) = k
+basicKey (TaggedKey (TK _ k)) = k
+
 data Cursor = Cursor
   { path :: Seq.Seq (Key Tag)
   , finalKey :: Key Void
@@ -134,10 +138,6 @@ data Context = Context
 data EvalError
   = GetOnHead
   | UndefinedVariable Var
-
-headKey, tailKey :: Key Void
-headKey = "head"
-tailKey = "tail"
 
 newtype Eval a
   = Eval { runEval :: ExceptT EvalError (State Context) a }
