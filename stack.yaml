@@ -1,2 +1,4 @@
 resolver: lts-8.2
 system-ghc: true
+extra-deps:
+  - hedgehog-0.1

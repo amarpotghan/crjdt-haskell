@@ -140,6 +140,7 @@ data Context = Context
 data EvalError
   = GetOnHead
   | UndefinedVariable Var
+  deriving (Show, Eq)
 
 newtype Eval a
   = Eval { runEval :: ExceptT EvalError (State Context) a }

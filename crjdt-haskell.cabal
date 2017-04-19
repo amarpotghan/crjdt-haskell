@@ -37,6 +37,7 @@ test-suite crjdt-haskell-test
   main-is:             Spec.hs
   build-depends:       base
                      , crjdt-haskell
+                     , hspec
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
