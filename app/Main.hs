@@ -7,4 +7,4 @@ main :: IO ()
 main = print example
 
 example :: Cmd
-example = Let "x" (Keys Doc)
+example = Let "x" (Var "y")

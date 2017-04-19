@@ -95,8 +95,8 @@ data Cmd
 data Expr
   = Doc
   | Var Var
-  | Keys Expr
-  | Values Expr
+  -- | Keys Expr
+  -- | Values Expr
   | Iter Expr
   | Next Expr
   | GetKey Expr (Key Void)
@@ -432,8 +432,6 @@ eval (GetKey expr k) = do
 eval (Var var) = get >>= maybe (throwError (UndefinedVariable var)) pure . lookupCtx var
 eval (Iter expr) = appendWith ListT (Key Head) <$> eval expr
 eval (Next expr) = get >>= \(document -> d) -> eval expr >>= stepNext d
--- TODO: query part. Not yet implemented
-eval values = eval values
 
 execute :: Ctx m => Cmd -> m ()
 execute (Let x expr) = eval expr >>= addVariable (Variable x)
