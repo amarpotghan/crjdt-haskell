@@ -189,6 +189,12 @@ findChild t (BranchDocument (Branch {branchTag = ListT, ..})) = M.lookup t child
 findChild t (BranchDocument (Branch {branchTag = MapT, ..})) = M.lookup t children
 findChild _ _ = Nothing
 
+childGet :: Key Tag -> Document Tag -> Document Tag
+childGet k = fromMaybe (choose (getTag k)) . findChild k
+  where choose MapT = BranchDocument $ Branch mempty mempty mempty MapT
+        choose ListT = BranchDocument $ Branch mempty mempty (M.singleton Head Tail) ListT
+        choose RegT = LeafDocument mempty
+
 lookupCtx :: Var -> Context -> Maybe Cursor
 lookupCtx v = M.lookup v . variables
 
