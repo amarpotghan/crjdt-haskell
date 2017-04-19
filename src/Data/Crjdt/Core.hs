@@ -175,11 +175,11 @@ appendWith :: Tag -> Key Void -> Cursor -> Cursor
 appendWith t k (Cursor p final) = Cursor (p `mappend` Seq.singleton (reTag t final)) k
 
 -- Avoiding lens dependency for now
-setFinalKey :: Cursor -> Key Void -> Cursor
-setFinalKey c fk = c { finalKey = fk }
+setFinalKey :: Key Void -> Cursor -> Cursor
+setFinalKey fk c = c { finalKey = fk }
 
-setPath :: Cursor -> Seq.Seq (Key Tag) -> Cursor
-setPath c newpath = c { path = newpath }
+setPath :: Seq.Seq (Key Tag) -> Cursor -> Cursor
+setPath newpath c = c { path = newpath }
 
 type Ctx m = (MonadError EvalError m, MonadState Context m)
 
@@ -343,23 +343,25 @@ applyOp o@Operation{..} d = case viewl (path opCur) of
         nextKey = next key d
         assign =
           let newDoc = applyOp o
-                { opCur = opCur { path = mempty, finalKey = finalKey opCur }
+                { opCur = setPath mempty . setFinalKey (finalKey opCur) $ opCur
                 , opMutation = AssignMutation val
                 } d
           in case newDoc of
                BranchDocument b -> BranchDocument $ b
-                 { keyOrder = M.insert (basicKey key) (I opId) . M.insert (I opId) (basicKey nextKey) $ keyOrder b}
+                 { keyOrder = M.insert (I opId) (basicKey nextKey) . M.insert (basicKey key) (I opId) $ keyOrder b}
                nd -> nd
         insert' (Key (I kid)) | opId < kid = assign
         insert' (Key Tail) = assign
         insert' (Key (I kid))
           | opId > kid = applyOp o
-            { opCur = opCur { path = mempty, finalKey = finalKey opCur }} d
+            { opCur = setPath mempty . setFinalKey (finalKey opCur)$  opCur } d
         insert' _ = d
     DeleteMutation -> execState (clearElem opDeps (finalKey opCur)) d
-
-
-
+  (x :< xs) ->
+    let c = childGet x d
+        child = applyOp (o {opCur = setPath xs opCur}) c
+        newDoc = addId opMutation x opId d
+    in addChild x child newDoc
 
 applyRemote :: Ctx m => m ()
 applyRemote = get >>= \c ->
@@ -396,7 +398,7 @@ stepNext d c@(Cursor (viewl -> Seq.EmptyL) (next -> getNextKey)) = get >>= \ctx 
     (True, False) -> stepNext d (Cursor mempty nextKey)
     (False, _) -> pure c
 stepNext d c@(Cursor (viewl -> (x :< xs)) _) = maybe (pure c) f (findChild x d)
-  where f = fmap (setFinalKey c . finalKey) . (`stepNext` (setPath c xs))
+  where f = fmap ((`setFinalKey` c) . finalKey) . (`stepNext` (setPath xs c))
 stepNext _ c = pure c
 
 eval :: Ctx m => Expr -> m Result
