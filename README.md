@@ -1,1 +1,1 @@
-## [crjdt](http://arxiv.org/pdf/1608.03960.pdf) implementation in Haskell
+## [crjdt](https://arxiv.org/pdf/1608.03960v1.pdf) implementation in Haskell
