@@ -282,14 +282,14 @@ clear deps key = get >>= (clear' <*> findChild key)
       pure presence
 
 addChild :: Key Tag -> Document Tag -> Document Tag -> Document Tag
-addChild key _ d@(LeafDocument _) = d
+addChild _ _ d@(LeafDocument _) = d
 addChild key child (BranchDocument d) = BranchDocument d { children = M.insert key child (children d)}
 
 clearMap, clearList :: Document Tag -> Set Id -> State (Document Tag) (Set Id)
 clearMap child deps = put child *> clearMap' mempty
   where clearMap' acc = do
-          mapKeys <- allKeys <$> get
-          case Set.toList (mapKeys Set.\\ acc) of
+          ms <- allKeys <$> get
+          case Set.toList (ms Set.\\ acc) of
             [] -> pure mempty
             (k: _) -> do
               p1 <- clearElem deps (unTag k)
