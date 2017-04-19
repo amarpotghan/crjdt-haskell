@@ -314,10 +314,30 @@ addId _ t i (BranchDocument b) = BranchDocument b
 addId _ _ _ d = d
 
 applyOp :: Operation -> Document Tag -> Document Tag
-applyOp op d = case (path $ opCur op) of
-  (viewl -> EmptyL) -> case op of
-    Operation {opMutation = AssignMutation val, ..} ->
-      _x
+applyOp Operation{..} d = case viewl (path opCur) of
+  EmptyL -> case opMutation of
+    AssignMutation val -> case val of
+      EmptyObject -> assignBranch MapT d
+      EmptyArray -> assignBranch ListT d
+      other -> assignLeaf other d
+    where
+      assignBranch tag = execState $ do
+        let key@(Key k) = finalKey opCur
+            tagged = tagWith tag k
+        _ <- clearElem opDeps key
+        modify $ addId opMutation tagged opId
+        child <- childGet tagged <$> get
+        modify (addChild tagged child)
+      assignLeaf other = execState $ do
+        let tagged = tagWith RegT (basicKey $ finalKey opCur)
+        _ <- clear opDeps tagged
+        modify $ addId opMutation tagged opId
+        child <- childGet tagged <$> get
+        case child of
+          LeafDocument (RegDocument vals) ->
+            modify (addChild tagged $ LeafDocument $ RegDocument (M.insert opId other vals))
+          branchChild -> modify (addChild tagged branchChild)
+
 
 applyRemote :: Ctx m => m ()
 applyRemote = get >>= \c ->
@@ -349,7 +369,7 @@ applyLocal mut cur = modify $ \c ->
 stepNext :: Ctx m => Document Tag -> Cursor -> m Cursor
 stepNext d c@(Cursor (viewl -> Seq.EmptyL) (next -> getNextKey)) = get >>= \ctx -> do
   let nextKey = Key $ getNextKey (document ctx)
-  case (nextKey /= tailKey, Set.null (getPresence nextKey (document ctx))) of
+  case (nextKey /= Key Tail, Set.null (getPresence nextKey (document ctx))) of
     (True, True) -> pure (Cursor mempty nextKey)
     (True, False) -> stepNext d (Cursor mempty nextKey)
     (False, _) -> pure c
@@ -365,7 +385,7 @@ eval (GetKey expr k) = do
     (Key Head) -> throwError GetOnHead
     _ -> pure (appendWith MapT k cursor)
 eval (Var var) = get >>= maybe (throwError (UndefinedVariable var)) pure . lookupCtx var
-eval (Iter expr) = appendWith ListT headKey <$> eval expr
+eval (Iter expr) = appendWith ListT (Key Head) <$> eval expr
 eval (Next expr) = get >>= \(document -> d) -> eval expr >>= stepNext d
 -- TODO: query part. Not yet implemented
 eval values = eval values
