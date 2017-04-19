@@ -252,7 +252,6 @@ addVariable :: Ctx m => Var -> Cursor -> m ()
 addVariable v cur = modify $ \c -> c { variables = M.insert v cur (variables c)}
 {-# INLINE addVariable #-}
 
--- FIXME: State (Document Tag) (Set Id)
 clearElem :: Set Id -> Key Void -> State (Document Tag) (Set Id)
 clearElem deps key = do
   presence <- clearAny deps key
