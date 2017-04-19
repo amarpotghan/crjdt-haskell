@@ -202,10 +202,10 @@ getPresence :: Key Void -> Document Tag -> Set Id
 getPresence k (BranchDocument (Branch {branchTag = ListT, ..})) = fromMaybe mempty (M.lookup k presence)
 getPresence _ _ = mempty
 
-next :: Key Void -> Document Tag -> BasicKey
-next (Key key) (BranchDocument (Branch {branchTag = ListT, ..})) = fromMaybe Tail $
+next :: Key Void -> Document Tag -> Key Void
+next (Key key) (BranchDocument (Branch {branchTag = ListT, ..})) = Key $ fromMaybe Tail $
   M.lookup key keyOrder
-next _ _ = Tail
+next _ _ = Key Tail
 
 data Id = Id
   { sequenceNumber :: Integer
@@ -298,46 +298,64 @@ clearMap child deps = put child *> clearMap' mempty
         allKeys (BranchDocument (Branch {branchTag = MapT, ..})) = keysSet children
         allKeys _ = mempty
 
-clearList child deps = put child *> clearList' Head
-  where clearList' Tail = pure mempty
+clearList child deps = put child *> clearList' (Key Head)
+  where clearList' (Key Tail) = pure mempty
         clearList' hasMore = do
-          nextt <- next (Key hasMore) <$> get
-          p1 <- clearElem deps (Key nextt)
+          nextt <- next hasMore <$> get
+          p1 <- clearElem deps nextt
           p2 <- clearList' nextt
           pure (p1 `mappend` p2)
 
-
 addId :: Mutation -> Key Tag -> Id -> Document Tag -> Document Tag
-addId DeleteMutation _ _ d = d
 addId _ t i (BranchDocument b) = BranchDocument b
   { presence = M.alter (maybe (Just $ Set.singleton i) (Just . Set.insert i)) (unTag t) $ presence b }
+addId DeleteMutation _ _ d = d
 addId _ _ _ d = d
 
 applyOp :: Operation -> Document Tag -> Document Tag
-applyOp Operation{..} d = case viewl (path opCur) of
+applyOp o@Operation{..} d = case viewl (path opCur) of
   EmptyL -> case opMutation of
     AssignMutation val -> case val of
       EmptyObject -> assignBranch MapT d
       EmptyArray -> assignBranch ListT d
       other -> assignLeaf other d
-    where
-      assignBranch tag = execState $ do
-        let key@(Key k) = finalKey opCur
-            tagged = tagWith tag k
-        _ <- clearElem opDeps key
-        modify $ addId opMutation tagged opId
-        child <- childGet tagged <$> get
-        modify (addChild tagged child)
-      assignLeaf other = execState $ do
-        let tagged = tagWith RegT (basicKey $ finalKey opCur)
-        _ <- clear opDeps tagged
-        modify $ addId opMutation tagged opId
-        child <- childGet tagged <$> get
-        case child of
-          LeafDocument (RegDocument vals) ->
-            modify (addChild tagged $ LeafDocument $ RegDocument (M.insert opId other vals))
-          branchChild -> modify (addChild tagged branchChild)
+      where
+        assignBranch tag = execState $ do
+          let key@(Key k) = finalKey opCur
+              tagged = tagWith tag k
+          _ <- clearElem opDeps key
+          modify $ addId opMutation tagged opId
+          child <- childGet tagged <$> get
+          modify (addChild tagged child)
+        assignLeaf other = execState $ do
+          let tagged = tagWith RegT (basicKey $ finalKey opCur)
+          _ <- clear opDeps tagged
+          modify $ addId opMutation tagged opId
+          child <- childGet tagged <$> get
+          case child of
+            LeafDocument (RegDocument vals) ->
+              modify (addChild tagged $ LeafDocument $ RegDocument (M.insert opId other vals))
+            branchChild -> modify (addChild tagged branchChild)
 
+    InsertMutation val -> insert' nextKey
+      where
+        key = finalKey opCur
+        nextKey = next key d
+        assign =
+          let newDoc = applyOp o
+                { opCur = opCur { path = mempty, finalKey = finalKey opCur }
+                , opMutation = AssignMutation val
+                } d
+          in case newDoc of
+               BranchDocument b -> BranchDocument $ b
+                 { keyOrder = M.insert (basicKey key) (I opId) . M.insert (I opId) (basicKey nextKey) $ keyOrder b}
+               nd -> nd
+        insert' (Key (I kid)) | opId < kid = assign
+        insert' (Key Tail) = assign
+        insert' (Key (I kid))
+          | opId > kid = applyOp o
+            { opCur = opCur { path = mempty, finalKey = finalKey opCur }} d
+        insert' _ = d
 
 applyRemote :: Ctx m => m ()
 applyRemote = get >>= \c ->
@@ -368,7 +386,7 @@ applyLocal mut cur = modify $ \c ->
 
 stepNext :: Ctx m => Document Tag -> Cursor -> m Cursor
 stepNext d c@(Cursor (viewl -> Seq.EmptyL) (next -> getNextKey)) = get >>= \ctx -> do
-  let nextKey = Key $ getNextKey (document ctx)
+  let nextKey = getNextKey (document ctx)
   case (nextKey /= Key Tail, Set.null (getPresence nextKey (document ctx))) of
     (True, True) -> pure (Cursor mempty nextKey)
     (True, False) -> stepNext d (Cursor mempty nextKey)
