@@ -16,21 +16,6 @@ import Data.Void
 
 newtype Var = Variable { getName :: Text } deriving (Show, Eq, Ord)
 
-tagWith :: tag -> BasicKey -> Key tag
-tagWith t = TaggedKey . TK t
-
-basicKey :: Key tag -> BasicKey
-basicKey (Key k) = k
-basicKey (TaggedKey (TK _ k)) = k
-
-unTag :: Key tag -> Key Void
-unTag (Key k) = Key k
-unTag (TaggedKey (TK _ k)) = Key k
-
-reTag :: a -> Key Void -> Key a
-reTag given (Key k) = tagWith given k
-reTag given (TaggedKey (TK _ k)) = tagWith given k
-
 instance Monad m => Serial m Var where
   series = newtypeCons (Variable .  pack)
 
@@ -92,3 +77,21 @@ data Id = Id
 
 instance Monad m => Serial m Id where
   series = cons2 Id
+
+tagWith :: tag -> BasicKey -> Key tag
+tagWith t = TaggedKey . TK t
+
+getTag :: Key tag -> tag
+getTag (TaggedKey (TK t _)) = t
+
+basicKey :: Key tag -> BasicKey
+basicKey (Key k) = k
+basicKey (TaggedKey (TK _ k)) = k
+
+unTag :: Key tag -> Key Void
+unTag (Key k) = Key k
+unTag (TaggedKey (TK _ k)) = Key k
+
+reTag :: a -> Key Void -> Key a
+reTag given (Key k) = tagWith given k
+reTag given (TaggedKey (TK _ k)) = tagWith given k

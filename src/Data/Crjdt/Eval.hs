@@ -30,7 +30,7 @@ import Control.Monad.State
 import Control.Monad.Except
 
 import Data.Crjdt.Types
-import Data.Crjdt.Core
+import Data.Crjdt.Context
 import Data.Crjdt.Internal.Core
 
 data EvalError

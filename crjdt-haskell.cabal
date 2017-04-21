@@ -16,7 +16,7 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Data.Crjdt
-                     , Data.Crjdt.Core
+                     , Data.Crjdt.Context
                      , Data.Crjdt.Types
                      , Data.Crjdt.Eval
                      , Data.Crjdt.Internal

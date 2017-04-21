@@ -14,7 +14,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Data.Crjdt.Core where
+module Data.Crjdt.Context where
 
 import Data.Void
 import Data.Maybe
@@ -96,10 +96,6 @@ updatePresence key (Set.null -> True) (BranchDocument b) = BranchDocument b
 updatePresence key newPresence (BranchDocument b) = BranchDocument b
   { presence = M.insert key newPresence $ presence b }
 updatePresence _ _ d = d
-
-
-getTag :: Key Tag -> Tag
-getTag (TaggedKey (TK t _)) = t
 
 data Mutation
   = InsertMutation Val
