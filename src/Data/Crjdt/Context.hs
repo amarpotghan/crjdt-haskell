@@ -216,13 +216,13 @@ applyOp o@Operation{..} d = case viewl (path opCur) of
         assignBranch tag = execState $ do
           let key@(Key k) = finalKey opCur
               tagged = tagWith tag k
-          _ <- clearElem opDeps key
+          void $ clearElem opDeps key
           modify $ addId opMutation tagged opId
           child <- childGet tagged <$> get
           modify (addChild tagged child)
         assignLeaf other = execState $ do
           let tagged = tagWith RegT (basicKey $ finalKey opCur)
-          _ <- clear opDeps tagged
+          void $ clear opDeps tagged
           modify $ addId opMutation tagged opId
           child <- childGet tagged <$> get
           case child of
