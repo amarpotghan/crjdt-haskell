@@ -179,15 +179,16 @@ data EvalError
   | UndefinedVariable Var
   deriving (Show, Eq)
 
-newtype Eval a
-  = Eval { runEval :: ExceptT EvalError (State Context) a }
-  deriving ( Functor
-           , Applicative
-           , Monad
-           , MonadFix
-           , MonadError EvalError
-           , MonadState Context
-           )
+newtype Eval a = Eval
+  { runEval :: ExceptT EvalError (State Context) a
+  } deriving
+  ( Functor
+  , Applicative
+  , Monad
+  , MonadFix
+  , MonadError EvalError
+  , MonadState Context
+  )
 
 initial :: ReplicaId -> Context
 initial rid = Context
@@ -231,9 +232,10 @@ findChild _ _ = Nothing
 
 childGet :: Key Tag -> Document Tag -> Document Tag
 childGet k = fromMaybe (choose (getTag k)) . findChild k
-  where choose MapT = BranchDocument $ Branch mempty mempty mempty MapT
-        choose ListT = BranchDocument $ Branch mempty mempty (M.singleton Head Tail) ListT
-        choose RegT = LeafDocument mempty
+  where
+    choose MapT = BranchDocument $ Branch mempty mempty mempty MapT
+    choose ListT = BranchDocument $ Branch mempty mempty (M.singleton Head Tail) ListT
+    choose RegT = LeafDocument mempty
 
 lookupCtx :: Var -> Context -> Maybe Cursor
 lookupCtx v = M.lookup v . variables
@@ -305,7 +307,8 @@ clearElem deps key = do
 
 clearAny :: Set Id -> Key Void -> State (Document Tag) (Set Id)
 clearAny deps key = mconcat <$> traverse clearAll [MapT, ListT, RegT]
-  where clearAll t = clear deps (reTag t key)
+  where
+    clearAll t = clear deps (reTag t key)
 
 clear :: Set Id -> Key Tag -> State (Document Tag) (Set Id)
 clear deps key = get >>= (clear' <*> findChild key)
@@ -330,24 +333,26 @@ addChild key child (BranchDocument d) = BranchDocument d { children = M.insert k
 
 clearMap, clearList :: Document Tag -> Set Id -> State (Document Tag) (Set Id)
 clearMap child deps = put child *> clearMap' mempty
-  where clearMap' acc = do
-          ms <- allKeys <$> get
-          case Set.toList (ms Set.\\ acc) of
-            [] -> pure mempty
-            (k: _) -> do
-              p1 <- clearElem deps (unTag k)
-              p2 <- clearMap' (Set.insert k acc)
-              pure (p1 `mappend` p2)
-        allKeys (BranchDocument (Branch {branchTag = MapT, ..})) = keysSet children
-        allKeys _ = mempty
+  where
+    clearMap' acc = do
+      ms <- allKeys <$> get
+      case Set.toList (ms Set.\\ acc) of
+        [] -> pure mempty
+        (k: _) -> do
+          p1 <- clearElem deps (unTag k)
+          p2 <- clearMap' (Set.insert k acc)
+          pure (p1 `mappend` p2)
+    allKeys (BranchDocument (Branch {branchTag = MapT, ..})) = keysSet children
+    allKeys _ = mempty
 
 clearList child deps = put child *> clearList' (Key Head)
-  where clearList' (Key Tail) = pure mempty
-        clearList' hasMore = do
-          nextt <- next hasMore <$> get
-          p1 <- clearElem deps nextt
-          p2 <- clearList' nextt
-          pure (p1 `mappend` p2)
+  where
+    clearList' (Key Tail) = pure mempty
+    clearList' hasMore = do
+      nextt <- next hasMore <$> get
+      p1 <- clearElem deps nextt
+      p2 <- clearList' nextt
+      pure (p1 `mappend` p2)
 
 addId :: Mutation -> Key Tag -> Id -> Document Tag -> Document Tag
 addId _ t i (BranchDocument b) = BranchDocument b
