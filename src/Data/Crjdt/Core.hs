@@ -22,11 +22,8 @@ import Data.Sequence (ViewL(..), viewl)
 import qualified Data.Sequence as Seq
 import Data.Map as M
 import Data.Set as Set
-import Data.Foldable (traverse_)
-import Control.Monad.Fix
-import Control.Monad.State
-import Control.Monad.Except
 import Test.SmallCheck.Series
+import Control.Monad.State
 
 import Data.Crjdt.Types
 import Data.Crjdt.Internal.Core
@@ -40,28 +37,6 @@ data Tag
 instance Monad m => Serial m Tag where
   series = cons0 MapT \/ cons0 ListT \/ cons0 RegT
 
-type Result = Cursor
-  -- = Ks [Key Void]
-  -- \| Vs [Val]
-  -- \| Mark Cursor
-  -- deriving (Show, Eq)
-
--- DOC
-docKey :: Key Tag
-docKey = tagWith MapT DocKey
-
-tagWith :: tag -> BasicKey -> Key tag
-tagWith t = TaggedKey . TK t
-
-basicKey :: Key tag -> BasicKey
-basicKey (Key k) = k
-basicKey (TaggedKey (TK _ k)) = k
-
-data Cursor = Cursor
-  { path :: Seq.Seq (Key Tag)
-  , finalKey :: Key Void
-  } deriving (Show, Eq)
-
 data Context = Context
   { document :: Document Tag
   , variables :: M.Map Var Cursor
@@ -72,49 +47,13 @@ data Context = Context
   , received :: Seq.Seq Operation
   } deriving Show
 
-data EvalError
-  = GetOnHead
-  | UndefinedVariable Var
-  deriving (Show, Eq)
+data Cursor = Cursor
+  { path :: Seq.Seq (Key Tag)
+  , finalKey :: Key Void
+  } deriving (Show, Eq)
 
-newtype Eval a = Eval
-  { runEval :: ExceptT EvalError (State Context) a
-  } deriving
-  ( Functor
-  , Applicative
-  , Monad
-  , MonadFix
-  , MonadError EvalError
-  , MonadState Context
-  )
-
-initial :: ReplicaId -> Context
-initial rid = Context
-  { document = BranchDocument (Branch mempty mempty mempty MapT)
-  , replicaGlobal = 0
-  , variables = mempty
-  , replicaId = rid
-  , queue = mempty
-  , history = mempty
-  , received = mempty
-  }
-
-run :: ReplicaId -> Eval a -> (Either EvalError a, Context)
-run rid = (`runState` (initial rid)) . runExceptT . runEval
-
-evalEval :: ReplicaId -> Expr -> Either EvalError Cursor
-evalEval rid = (`evalState` (initial rid)) . runExceptT . runEval . eval
-
-execEval :: ReplicaId -> Eval a -> Context
-execEval rid = (`execState` (initial rid)) . runExceptT . runEval
-
-unTag :: Key tag -> Key Void
-unTag (Key k) = Key k
-unTag (TaggedKey (TK _ k)) = Key k
-
-reTag :: a -> Key Void -> Key a
-reTag given (Key k) = tagWith given k
-reTag given (TaggedKey (TK _ k)) = tagWith given k
+docKey :: Key Tag
+docKey = tagWith MapT DocKey
 
 appendWith :: Tag -> Key Void -> Cursor -> Cursor
 appendWith t k (Cursor p final) = Cursor (p `mappend` Seq.singleton (reTag t final)) k
@@ -125,8 +64,6 @@ setFinalKey fk c = c { finalKey = fk }
 
 setPath :: Seq.Seq (Key Tag) -> Cursor -> Cursor
 setPath newpath c = c { path = newpath }
-
-type Ctx m = (MonadError EvalError m, MonadState Context m)
 
 -- still avoiding lens, but almost there :-)
 findChild :: Key Tag -> Document Tag -> Maybe (Document Tag)
@@ -153,13 +90,6 @@ next (Key key) (BranchDocument (Branch {branchTag = ListT, ..})) = Key $ fromMay
   M.lookup key keyOrder
 next _ _ = Key Tail
 
-data Branch tag = Branch
-  { children :: Map (Key tag) (Document tag)
-  , presence :: Map (Key Void) (Set Id)
-  , keyOrder :: Map BasicKey BasicKey
-  , branchTag :: tag
-  } deriving Show
-
 updatePresence :: Key Void -> Set Id -> Document tag -> Document tag
 updatePresence key (Set.null -> True) (BranchDocument b) = BranchDocument b
   { presence = M.delete key (presence b) }
@@ -167,7 +97,6 @@ updatePresence key newPresence (BranchDocument b) = BranchDocument b
   { presence = M.insert key newPresence $ presence b }
 updatePresence _ _ d = d
 
-newtype RegDocument = RegDocument { values :: M.Map Id Val } deriving (Show, Eq, Monoid)
 
 getTag :: Key Tag -> Tag
 getTag (TaggedKey (TK t _)) = t
@@ -185,14 +114,19 @@ data Operation = Operation
   , opMutation :: Mutation
   } deriving (Eq, Show)
 
+newtype RegDocument = RegDocument { values :: M.Map Id Val } deriving (Show, Eq, Monoid)
+
+data Branch tag = Branch
+  { children :: Map (Key tag) (Document tag)
+  , presence :: Map (Key Void) (Set Id)
+  , keyOrder :: Map BasicKey BasicKey
+  , branchTag :: tag
+  } deriving Show
+
 data Document tag
   = BranchDocument (Branch tag)
   | LeafDocument RegDocument
   deriving Show
-
-addVariable :: Ctx m => Var -> Cursor -> m ()
-addVariable v cur = modify $ \c -> c { variables = M.insert v cur (variables c)}
-{-# INLINE addVariable #-}
 
 clearElem :: Set Id -> Key Void -> State (Document Tag) (Set Id)
 clearElem deps key = do
@@ -308,78 +242,3 @@ applyOp o@Operation{..} d = case viewl (path opCur) of
         child = applyOp (o {opCur = setPath xs opCur}) c
         newDoc = addId opMutation x opId d
     in addChild x child newDoc
-
-valuesOf :: Ctx m => Expr -> m [Val]
-valuesOf e = partsOf e RegT $ \case
-  (LeafDocument l) -> M.elems (values l)
-  _ -> mempty
-
-keysOf :: Ctx m => Expr -> m (Set.Set (Key Void))
-keysOf e = partsOf e MapT $ \case
-  (BranchDocument (Branch{branchTag = MapT,..})) -> M.keysSet $ M.filter (not . Set.null) presence
-  _ -> mempty
-
-partsOf :: (Ctx m, Monoid a) => Expr -> Tag -> (Document Tag -> a) -> m a
-partsOf e tag f = eval e >>= \c -> partsOf' c f . document <$> get
-  where
-    partsOf' :: Monoid m => Cursor -> (Document Tag -> m) -> Document Tag -> m
-    partsOf' Cursor{..} getParts d = case viewl path of
-      EmptyL -> maybe mempty getParts $ findChild (tagWith tag $ basicKey finalKey) d
-      (x :< xs) -> maybe mempty (partsOf' (Cursor xs finalKey) getParts) $ findChild x d
-
-applyRemote :: Ctx m => m ()
-applyRemote = get >>= \c ->
-  let alreadyProcessed op = opId op `Set.member` history c
-      satisfiesDeps op = opDeps op `Set.isSubsetOf` history c
-      applyRemote' op = put c
-        { replicaGlobal = replicaGlobal c `max` (sequenceNumber . opId $ op)
-        , document = applyOp op (document c)
-        , history = Set.insert (opId op) (history c)
-        }
-  in traverse_ applyRemote' $ Seq.filter (liftM2 (&&) alreadyProcessed satisfiesDeps) (received c)
-{-# INLINE applyRemote #-}
-
-applyLocal :: Ctx m => Mutation -> Cursor -> m ()
-applyLocal mut cur = modify $ \c ->
-  let op = Operation
-        { opId = Id (replicaGlobal c + 1) (replicaId c)
-        , opDeps = history c
-        , opCur = cur
-        , opMutation = mut
-        }
-  in c { document = applyOp op (document c)
-       , replicaGlobal = replicaGlobal c + 1
-       , history = Set.insert (opId op) (history c)
-       , queue = queue c Seq.|> op
-       }
-{-# INLINE applyLocal #-}
-
-stepNext :: Ctx m => Document Tag -> Cursor -> m Cursor
-stepNext d c@(Cursor (viewl -> Seq.EmptyL) (next -> getNextKey)) = get >>= \ctx -> do
-  let nextKey = getNextKey (document ctx)
-  case (nextKey /= Key Tail, Set.null (getPresence nextKey (document ctx))) of
-    (True, True) -> pure (Cursor mempty nextKey)
-    (True, False) -> stepNext d (Cursor mempty nextKey)
-    (False, _) -> pure c
-stepNext d c@(Cursor (viewl -> (x :< xs)) _) = maybe (pure c) f (findChild x d)
-  where f = fmap ((`setFinalKey` c) . finalKey) . (`stepNext` (setPath xs c))
-stepNext _ c = pure c
-
-eval :: Ctx m => Expr -> m Result
-eval Doc = pure $ Cursor Seq.empty $ unTag docKey
-eval (GetKey expr k) = do
-  cursor <- eval expr
-  case finalKey cursor of
-    (Key Head) -> throwError GetOnHead
-    _ -> pure (appendWith MapT k cursor)
-eval (Var var) = get >>= maybe (throwError (UndefinedVariable var)) pure . lookupCtx var
-eval (Iter expr) = appendWith ListT (Key Head) <$> eval expr
-eval (Next expr) = get >>= \(document -> d) -> eval expr >>= stepNext d
-
-execute :: Ctx m => Cmd -> m ()
-execute (Let x expr) = eval expr >>= addVariable (Variable x)
-execute (Assign expr value) = eval expr >>= applyLocal (AssignMutation value)
-execute (InsertAfter expr value) = eval expr >>= applyLocal (InsertMutation value)
-execute (Delete expr) = eval expr >>= applyLocal DeleteMutation
-execute Yield = applyRemote
-execute (cmd1 :> cmd2) = execute cmd1 *> execute cmd2

@@ -18,6 +18,7 @@ library
   exposed-modules:     Data.Crjdt
                      , Data.Crjdt.Core
                      , Data.Crjdt.Types
+                     , Data.Crjdt.Eval
                      , Data.Crjdt.Internal.Core
   build-depends:       base >= 4.7 && < 5
                      , text
