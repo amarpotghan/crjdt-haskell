@@ -133,7 +133,7 @@ data Expr
 
 instance Monad m => Serial m Expr where
   series =
-    cons1 Var \/
+    -- cons1 Var \/
     cons0 Doc \/
     cons1 Iter \/
     cons1 Next \/

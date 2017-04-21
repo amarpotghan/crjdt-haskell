@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Data.CrjdtSpec where
 
@@ -27,9 +28,9 @@ spec = describe "Crjdt Specs" $ do
     it "LET" $ property $ changeDepth (const 3) $ \(expr, name) ->
       let Just cursor = M.lookup name (variables $ execEval 1 (execute (Let (getName name) expr)))
           Right expectedCursor = evalEval 1 expr
-      in notVar expr ==> cursor == expectedCursor
+      in cursor == expectedCursor
 
     it "VAR" $ property $ changeDepth (const 3) $ \x expr ->
       let (result, c) = run 1 $ execute (Let (getName x) expr) *> eval (Var x)
           v = M.lookup x (variables c)
-      in notVar expr ==> v == eitherToMaybe result
+      in v == eitherToMaybe result
