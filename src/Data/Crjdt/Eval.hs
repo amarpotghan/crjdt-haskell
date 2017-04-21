@@ -6,7 +6,18 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Data.Crjdt.Eval where
+module Data.Crjdt.Eval
+  ( Eval(..)
+  , EvalError(..)
+  , keysOf
+  , valuesOf
+  , run
+  , evalEval
+  , execEval
+  , addVariable
+  , execute
+  , eval
+  ) where
 
 import Data.Void
 import Data.Sequence (ViewL(..), viewl)
