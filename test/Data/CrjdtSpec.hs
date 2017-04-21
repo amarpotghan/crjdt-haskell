@@ -3,14 +3,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Data.CrjdtSpec where
 
-import Test.Hspec hiding (property)
+import Test.Hspec
 import Test.Hspec.SmallCheck (property)
 import Data.Map as M hiding (empty)
-import Data.Maybe (fromJust, isJust)
 import Data.Either (isRight)
 import Test.SmallCheck
-import Test.SmallCheck.Series
-import Control.Applicative (empty)
 
 import Data.Crjdt
 import Data.Crjdt.Internal
