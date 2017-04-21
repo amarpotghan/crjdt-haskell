@@ -17,6 +17,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Data.Crjdt
                      , Data.Crjdt.Core
+                     , Data.Crjdt.Types
   build-depends:       base >= 4.7 && < 5
                      , text
                      , containers

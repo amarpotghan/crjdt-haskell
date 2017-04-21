@@ -29,61 +29,9 @@ import GHC.Generics
 import Control.Monad.Fix
 import Control.Monad.State
 import Control.Monad.Except
-import Test.SmallCheck
 import Test.SmallCheck.Series
 
-newtype Var = Variable { getName :: Text } deriving (Show, Eq, Ord)
-
-instance Monad m => Serial m Var where
-  series = newtypeCons (Variable .  pack)
-
-instance IsString Var where
-  fromString = Variable . fromString
-
-data TaggedKey tag = TK
-  { tag :: !tag
-  , key :: !BasicKey
-  } deriving (Eq, Show, Functor, Foldable, Traversable)
-
-instance Serial m tag => Serial m (TaggedKey tag) where
-  series = cons2 TK
-
-instance Eq tag => Ord (TaggedKey tag) where
-  compare (TK _ k1) (TK _ k2) = k1 `compare` k2
-
--- TODO: rethink about this type
-data Key tag where
-  Key :: BasicKey -> Key Void
-  TaggedKey :: TaggedKey tag -> Key tag
-
-instance Monad m => Serial m (Key Void) where
-  series = Key <$> series
-
-data BasicKey
-  = DocKey
-  | Head
-  | Tail
-  | I Id
-  | Str Text
-  deriving (Show, Eq, Ord)
-
-instance Monad m => Serial m BasicKey where
-  series = cons0 DocKey \/ cons0 Head \/ cons0 Tail \/ cons1 I \/ cons1 (Str . pack)
-
-deriving instance Eq tag => Ord (Key tag)
-
-instance IsString (Key Void) where
-  fromString = Key . Str . fromString
-
-instance Show tag => Show (Key tag) where
-  show (Key t) = show t
-  show (TaggedKey taggedKey) = show taggedKey
-
-instance Eq tag => Eq (Key tag) where
-  (Key t) == (Key t1) = t == t1
-  (TaggedKey t) == (TaggedKey t1) = t == t1
-  (Key _) == (TaggedKey _) = False
-  (TaggedKey _) == (Key _) = False
+import Data.Crjdt.Types
 
 data Tag
   = MapT
@@ -160,9 +108,6 @@ data Cursor = Cursor
   { path :: Seq.Seq (Key Tag)
   , finalKey :: Key Void
   } deriving (Show, Eq)
-
-type ReplicaId = Integer
-type GlobalReplicaCounter = Integer
 
 data Context = Context
   { document :: Document Tag
@@ -254,14 +199,6 @@ next :: Key Void -> Document Tag -> Key Void
 next (Key key) (BranchDocument (Branch {branchTag = ListT, ..})) = Key $ fromMaybe Tail $
   M.lookup key keyOrder
 next _ _ = Key Tail
-
-data Id = Id
-  { sequenceNumber :: Integer
-  , replicaNumber :: Integer
-  } deriving (Show, Eq, Ord)
-
-instance Monad m => Serial m Id where
-  series = cons2 Id
 
 data Branch tag = Branch
   { children :: Map (Key tag) (Document tag)

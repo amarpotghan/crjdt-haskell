@@ -3,3 +3,4 @@ module Data.Crjdt
   ) where
 
 import Data.Crjdt.Core as Core
+import Data.Crjdt.Types as Core
