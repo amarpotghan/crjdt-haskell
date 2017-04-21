@@ -16,8 +16,6 @@
 
 module Data.Crjdt.Core where
 
-import Data.Text
-import Data.String
 import Data.Void
 import Data.Maybe
 import Data.Sequence (ViewL(..), viewl)
@@ -25,13 +23,13 @@ import qualified Data.Sequence as Seq
 import Data.Map as M
 import Data.Set as Set
 import Data.Foldable (traverse_)
-import GHC.Generics
 import Control.Monad.Fix
 import Control.Monad.State
 import Control.Monad.Except
 import Test.SmallCheck.Series
 
 import Data.Crjdt.Types
+import Data.Crjdt.Internal.Core
 
 data Tag
   = MapT
@@ -41,51 +39,6 @@ data Tag
 
 instance Monad m => Serial m Tag where
   series = cons0 MapT \/ cons0 ListT \/ cons0 RegT
-
-data Val
-  = Number Int
-  | StringLit Text
-  | BoolLit Bool
-  | Null
-  | EmptyObject
-  | EmptyArray
-  deriving (Show, Eq)
-
-instance Monad m => Serial m Val where
-  series =
-    cons1 Number \/
-    (StringLit . pack <$> series) \/
-    cons1 BoolLit \/
-    cons0 Null \/
-    cons0 EmptyObject \/
-    cons0 EmptyArray
-
-data Cmd
-  = Let !Text !Expr
-  | Assign !Expr !Val
-  | InsertAfter !Expr !Val
-  | Delete !Expr
-  | Yield
-  | !Cmd :> !Cmd
-  deriving (Show, Eq)
-
-data Expr
-  = Doc
-  | Var !Var
-  -- | Keys Expr
-  -- | Values Expr
-  | Iter !Expr
-  | Next !Expr
-  | GetKey !Expr !(Key Void)
-  deriving (Show, Eq, Generic)
-
-instance Monad m => Serial m Expr where
-  series =
-    -- cons1 Var \/
-    cons0 Doc \/
-    cons1 Iter \/
-    cons1 Next \/
-    cons2 GetKey
 
 type Result = Cursor
   -- = Ks [Key Void]
