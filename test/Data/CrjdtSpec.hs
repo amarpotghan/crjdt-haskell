@@ -7,12 +7,10 @@ import Test.Hspec.SmallCheck (property)
 import Data.Map as M hiding (empty)
 import Data.Crjdt
 import Data.Maybe (fromJust, isJust)
+import Data.Either (isRight)
 import Test.SmallCheck
 import Test.SmallCheck.Series
 import Control.Applicative (empty)
-
-notVar (Var v) = False
-notVar _ = True
 
 eitherToMaybe :: Either x a -> Maybe a
 eitherToMaybe (Right a) = Just a
@@ -34,3 +32,7 @@ spec = describe "Crjdt Specs" $ do
       let (result, c) = run 1 $ execute (Let (getName x) expr) *> eval (Var x)
           v = M.lookup x (variables c)
       in v == eitherToMaybe result
+
+    it "GET" $ property $ changeDepth (const 3) $ \expr key ->
+      let cursor = (evalEval 1 (GetKey expr key))
+      in key /= (Key Head) && isRight cursor ==> fmap finalKey cursor == Right key
