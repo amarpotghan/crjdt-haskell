@@ -2,6 +2,7 @@
 module Main where
 
 import Data.Crjdt
+import Data.Crjdt.Internal
 
 main :: IO ()
 main = print example
