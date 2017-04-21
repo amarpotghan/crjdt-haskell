@@ -172,7 +172,7 @@ data Context = Context
   , history :: Set Id
   , queue :: Seq.Seq Operation
   , received :: Seq.Seq Operation
-  }
+  } deriving Show
 
 data EvalError
   = GetOnHead
@@ -201,8 +201,14 @@ initial rid = Context
   , received = mempty
   }
 
+run :: ReplicaId -> Eval a -> (Either EvalError a, Context)
+run rid = (`runState` (initial rid)) . runExceptT . runEval
+
 evalEval :: ReplicaId -> Expr -> Either EvalError Cursor
 evalEval rid = (`evalState` (initial rid)) . runExceptT . runEval . eval
+
+execEval :: ReplicaId -> Eval a -> Context
+execEval rid = (`execState` (initial rid)) . runExceptT . runEval
 
 unTag :: Key tag -> Key Void
 unTag (Key k) = Key k
@@ -262,7 +268,7 @@ data Branch tag = Branch
   , presence :: Map (Key Void) (Set Id)
   , keyOrder :: Map BasicKey BasicKey
   , branchTag :: tag
-  }
+  } deriving Show
 
 updatePresence :: Key Void -> Set Id -> Document tag -> Document tag
 updatePresence key (Set.null -> True) (BranchDocument b) = BranchDocument b
@@ -271,7 +277,7 @@ updatePresence key newPresence (BranchDocument b) = BranchDocument b
   { presence = M.insert key newPresence $ presence b }
 updatePresence _ _ d = d
 
-newtype RegDocument = RegDocument { values :: M.Map Id Val } deriving (Monoid)
+newtype RegDocument = RegDocument { values :: M.Map Id Val } deriving (Show, Eq, Monoid)
 
 getTag :: Key Tag -> Tag
 getTag (TaggedKey (TK t _)) = t
@@ -292,6 +298,7 @@ data Operation = Operation
 data Document tag
   = BranchDocument (Branch tag)
   | LeafDocument RegDocument
+  deriving Show
 
 addVariable :: Ctx m => Var -> Cursor -> m ()
 addVariable v cur = modify $ \c -> c { variables = M.insert v cur (variables c)}
