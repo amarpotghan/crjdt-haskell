@@ -36,6 +36,6 @@ spec = describe "Crjdt Specs" $ do
           v = M.lookup x (variables c)
       in v == eitherToMaybe result
 
-    it "GET" $ sproperty $ \expr key ->
-      let cursor = (evalEval 1 (GetKey expr key))
-      in key /= (Key Head) && isRight cursor ==> fmap finalKey cursor == Right key
+    it "GET" $ sproperty $ \expr k ->
+      let cursor = evalEval 1 (GetKey expr k)
+      in k /= (Key Head) && isRight cursor ==> fmap finalKey cursor == Right k
