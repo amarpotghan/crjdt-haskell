@@ -14,7 +14,25 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Data.Crjdt.Context where
+module Data.Crjdt.Context
+  ( Context(..)
+  , Cursor(..)
+  , Operation(..)
+  , Tag(..)
+  , Mutation(..)
+  , Document(..)
+  , Branch(..)
+  , RegDocument(..)
+  , findChild
+  , applyOp
+  , next
+  , getPresence
+  , setPath
+  , setFinalKey
+  , lookupCtx
+  , appendWith
+  , docKey
+  ) where
 
 import Data.Void
 import Data.Maybe
