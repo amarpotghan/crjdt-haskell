@@ -61,3 +61,32 @@ spec = describe "Figures from CRJDT paper" $ do
       d = BranchDocument parent
 
     document r1Result `shouldBe` d
+
+  it "Figure 2" $ do
+    let r1 = Let "var" (GetKey Doc "colors")
+          :> Assign (GetKey (Var "var") "blue") (StringLit "#0000ff")
+        r2 = r1
+
+        r1Next = r1
+          :> Let "var1" (GetKey Doc "colors")
+          :> Assign (GetKey (Var "var") "red") (StringLit "#ff0000")
+
+        r2Next = r2
+          :> Assign (GetKey Doc "colors") EmptyObject
+          :> Let "var2" (GetKey Doc "colors")
+          :> Assign (GetKey (Var "var") "green") (StringLit "#00ff00”")
+
+        (r1r, r1State) = run 1 (execute r1Next)
+        (r2r, r2State) = run 2 (execute r2Next)
+
+        r1Final = execute r1Next *> putRemote (queue r2State) *> execute Yield
+        r2Final = execute r2Next *> putRemote (queue r1State) *> execute Yield
+
+        (_, finalResult1) = run 1 r1Final
+        (_, finalResult2) = run 2 r2Final
+
+    r1r `shouldBe` Right ()
+    r2r `shouldBe` Right ()
+
+    document finalResult1 `shouldBe` document finalResult2
+    history finalResult1 `shouldBe` history finalResult2
