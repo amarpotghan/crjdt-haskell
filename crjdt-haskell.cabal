@@ -5,9 +5,9 @@ version:             0.1.0.0
 homepage:            https://github.com/githubuser/crjdt-haskell#readme
 license:             BSD3
 license-file:        LICENSE
-author:              Author name here
-maintainer:          example@example.com
-copyright:           2017 Author name here
+author:              Amar Potghan
+maintainer:          amarpotghan@gmail.com
+copyright:           2017 Amar Potghan
 category:            Data
 build-type:          Simple
 extra-source-files:  README.md
@@ -52,4 +52,4 @@ test-suite crjdt-haskell-test
 
 source-repository head
   type:     git
-  location: https://github.com/githubuser/crjdt-haskell
+  location: https://github.com/amarpotghan/crjdt-haskell
