@@ -100,14 +100,16 @@ addVariable v cur = modify $ \c -> c { variables = M.insert v cur (variables c)}
 
 applyRemote :: Ctx m => m ()
 applyRemote = get >>= \c ->
-  let alreadyProcessed op = opId op `Set.member` history c
-      satisfiesDeps op = opDeps op `Set.isSubsetOf` history c
-      applyRemote' op = put c
-        { replicaGlobal = replicaGlobal c `max` (sequenceNumber . opId $ op)
-        , document = applyOp op (document c)
-        , history = Set.insert (opId op) (history c)
-        }
-  in traverse_ applyRemote' $ Seq.filter (liftM2 (&&) alreadyProcessed satisfiesDeps) (received c)
+  let alreadyProcessed op cc = opId op `Set.member` history cc
+      satisfiesDeps op cc = opDeps op `Set.isSubsetOf` history cc
+      applyRemote' op = do
+        cc <- get
+        when (not (alreadyProcessed op cc) && satisfiesDeps op cc) $ put cc
+          { replicaGlobal = replicaGlobal cc `max` (sequenceNumber . opId $ op)
+          , document = applyOp op (document cc)
+          , history = Set.insert (opId op) (history cc)
+          }
+  in traverse_ applyRemote' (received c)
 {-# INLINE applyRemote #-}
 
 applyLocal :: Ctx m => Mutation -> Cursor -> m ()

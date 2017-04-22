@@ -32,9 +32,11 @@ module Data.Crjdt.Context
   , lookupCtx
   , appendWith
   , docKey
+  , prettyOperation
   ) where
 
 import Data.Void
+import Data.Foldable as Foldable (toList)
 import Data.Maybe
 import Data.Sequence (ViewL(..), viewl)
 import qualified Data.Sequence as Seq
@@ -45,6 +47,7 @@ import Control.Monad.State
 
 import Data.Crjdt.Types
 import Data.Crjdt.Internal.Core
+
 
 data Tag
   = MapT
@@ -128,6 +131,22 @@ data Operation = Operation
   , opMutation :: Mutation
   } deriving (Eq, Show)
 
+prettyOperation :: Operation -> String
+prettyOperation Operation{..} =
+  let oid = (sequenceNumber opId, replicaNumber opId)
+      cursor = (Foldable.toList $ path opCur, finalKey opCur)
+      mut = case opMutation of
+        InsertMutation v -> "Insert " `mappend` prettyVal v
+        AssignMutation v -> "Assign " `mappend` prettyVal v
+        DeleteMutation -> "Delete"
+
+  in "( "
+     ++ "id = " ++ show oid ++ ", "
+     ++ "deps = " ++ show (Set.toList opDeps) ++ ", "
+     ++ "mut = " ++ mut ++ ", "
+     ++ "cur = " ++ show cursor
+     ++ " )"
+
 newtype RegDocument = RegDocument { values :: M.Map Id Val } deriving (Show, Eq, Monoid)
 
 data Branch tag = Branch
@@ -135,12 +154,12 @@ data Branch tag = Branch
   , presence :: Map (Key Void) (Set Id)
   , keyOrder :: Map BasicKey BasicKey
   , branchTag :: tag
-  } deriving Show
+  } deriving (Eq, Show)
 
 data Document tag
   = BranchDocument (Branch tag)
   | LeafDocument RegDocument
-  deriving Show
+  deriving (Eq, Show)
 
 clearElem :: Set Id -> Key Void -> State (Document Tag) (Set Id)
 clearElem deps key = do
@@ -159,7 +178,7 @@ clear :: Set Id -> Key Tag -> State (Document Tag) (Set Id)
 clear deps key = get >>= (clear' <*> findChild key)
   where
     clear' _ Nothing = pure mempty
-    clear' _ (Just (LeafDocument reg)) = put (LeafDocument $ RegDocument c) *> pure (M.keysSet c)
+    clear' d (Just (LeafDocument reg)) = put (addChild key (LeafDocument $ RegDocument c) d) *> pure (M.keysSet c)
       where c = M.filterWithKey (\k _ -> k `Set.notMember` deps) $ values reg
     clear' d (Just child@(BranchDocument (Branch  {branchTag = MapT}))) = clearBranch d $ clearMap child
     clear' d (Just child@(BranchDocument (Branch {branchTag = ListT}))) = clearBranch d $ clearList child
@@ -226,8 +245,9 @@ applyOp o@Operation{..} d = case viewl (path opCur) of
           modify $ addId opMutation tagged opId
           child <- childGet tagged <$> get
           case child of
-            LeafDocument (RegDocument vals) ->
+            LeafDocument (RegDocument vals) -> do
               modify (addChild tagged $ LeafDocument $ RegDocument (M.insert opId other vals))
+
             branchChild -> modify (addChild tagged branchChild)
 
     InsertMutation val -> insert' nextKey

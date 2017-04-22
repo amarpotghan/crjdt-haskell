@@ -17,6 +17,12 @@ data Val
   | EmptyArray
   deriving (Show, Eq)
 
+prettyVal :: Val -> String
+prettyVal (Number i) = show i
+prettyVal (BoolLit i) = show i
+prettyVal (StringLit i) = show i
+prettyVal x = show x
+
 instance Monad m => Serial m Val where
   series =
     cons1 Number \/
