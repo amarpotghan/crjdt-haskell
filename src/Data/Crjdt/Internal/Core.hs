@@ -41,6 +41,8 @@ data Cmd
   | !Cmd :> !Cmd
   deriving (Show, Eq)
 
+infixr 6 :>
+
 data Expr
   = Doc
   | Var !Var

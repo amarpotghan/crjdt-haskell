@@ -76,17 +76,31 @@ spec = describe "Figures from CRJDT paper" $ do
           :> Let "var2" (GetKey Doc "colors")
           :> Assign (GetKey (Var "var") "green") (StringLit "#00ff00”")
 
-        (r1r, r1State) = run 1 (execute r1Next)
-        (r2r, r2State) = run 2 (execute r2Next)
+        (r1r, r1State) = run 1 (execute r1Next *> keysOf (GetKey Doc "colors"))
+        (r2r, r2State) = run 2 (execute r2Next *> keysOf (GetKey Doc "colors"))
 
-        r1Final = execute r1Next *> putRemote (queue r2State) *> execute Yield
-        r2Final = execute r2Next *> putRemote (queue r1State) *> execute Yield
+        r1Final = execute r1Next *> putRemote (queue r2State) *> execute Yield *> keysOf (GetKey Doc "colors")
+        r2Final = execute r2Next *> putRemote (queue r1State) *> execute Yield *> keysOf (GetKey Doc "colors")
 
-        (_, finalResult1) = run 1 r1Final
-        (_, finalResult2) = run 2 r2Final
+        (Right keys1, finalResult1) = run 1 r1Final
+        (Right keys2, finalResult2) = run 2 r2Final
 
-    r1r `shouldBe` Right ()
-    r2r `shouldBe` Right ()
+    keys1 `shouldBe` keys2
 
     document finalResult1 `shouldBe` document finalResult2
     history finalResult1 `shouldBe` history finalResult2
+
+  it "Figure 6" $ do
+    let cmd = Assign Doc EmptyObject
+          :> Let "list" (Iter (GetKey Doc "shopping"))
+          :> InsertAfter (Var "list") (StringLit "eggs")
+          :> Let "eggs" (Next (Var "list"))
+          :> InsertAfter (Var "eggs") (StringLit "milk")
+          :> InsertAfter (Var "list") (StringLit "cheese")
+        (Right xs, _) = run 1 $ (execute cmd) *> do
+          eggs <- valuesOf (Var "eggs")
+          milk <- valuesOf (Next (Var "eggs"))
+          cheese <- valuesOf (Next (Next (Var "eggs")))
+          pure (eggs ++ milk ++ cheese)
+
+    xs `shouldBe` [StringLit "eggs", StringLit "milk", StringLit "cheese"]

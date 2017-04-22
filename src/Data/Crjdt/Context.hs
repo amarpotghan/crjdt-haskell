@@ -48,7 +48,6 @@ import Control.Monad.State
 import Data.Crjdt.Types
 import Data.Crjdt.Internal.Core
 
-
 data Tag
   = MapT
   | ListT
@@ -254,21 +253,20 @@ applyOp o@Operation{..} d = case viewl (path opCur) of
       where
         key = finalKey opCur
         nextKey = next key d
-        assign =
+        insertNext =
           let newDoc = applyOp o
-                { opCur = setPath mempty . setFinalKey (finalKey opCur) $ opCur
+                { opCur = setPath mempty . setFinalKey (Key $ I opId) $ opCur
                 , opMutation = AssignMutation val
                 } d
           in case newDoc of
                BranchDocument b -> BranchDocument $ b
                  { keyOrder = M.insert (I opId) (basicKey nextKey) . M.insert (basicKey key) (I opId) $ keyOrder b}
                nd -> nd
-        insert' (Key (I kid)) | opId < kid = assign
-        insert' (Key Tail) = assign
-        insert' (Key (I kid))
-          | opId > kid = applyOp o
-            { opCur = setPath mempty . setFinalKey (finalKey opCur)$  opCur } d
-        insert' _ = d
+
+        insert' k@(Key (I kid))
+          | kid < opId = applyOp (o { opCur = setPath mempty . setFinalKey k $ opCur}) d
+        insert' _ = insertNext
+
     DeleteMutation -> execState (clearElem opDeps (finalKey opCur)) d
 
   (x :< xs) ->

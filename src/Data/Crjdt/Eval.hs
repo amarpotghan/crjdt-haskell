@@ -23,6 +23,7 @@ import Data.Void
 import Data.Sequence (ViewL(..), viewl)
 import qualified Data.Sequence as Seq
 import Data.Map as M
+import Data.Maybe (fromMaybe)
 import Data.Set as Set
 import Data.Foldable (traverse_)
 import Control.Monad.Fix
@@ -32,6 +33,8 @@ import Control.Monad.Except
 import Data.Crjdt.Types
 import Data.Crjdt.Context
 import Data.Crjdt.Internal.Core
+
+import Data.Foldable as Foldable
 
 data EvalError
   = GetOnHead
@@ -90,9 +93,9 @@ partsOf :: (Ctx m, Monoid a) => Expr -> Tag -> (Document Tag -> a) -> m a
 partsOf e tag f = eval e >>= \c -> partsOf' c f . document <$> get
   where
     partsOf' :: Monoid m => Cursor -> (Document Tag -> m) -> Document Tag -> m
-    partsOf' Cursor{..} getParts d = case viewl path of
-      EmptyL -> maybe mempty getParts $ findChild (tagWith tag $ basicKey finalKey) d
-      (x :< xs) -> maybe mempty (partsOf' (Cursor xs finalKey) getParts) $ findChild x d
+    partsOf' Cursor{..} getParts d = fromMaybe mempty $ case viewl path of
+      EmptyL -> getParts <$> findChild (tagWith tag $ basicKey finalKey) d
+      (x :< xs) -> partsOf' (Cursor xs finalKey) getParts <$> findChild x d
 
 addVariable :: Ctx m => Var -> Cursor -> m ()
 addVariable v cur = modify $ \c -> c { variables = M.insert v cur (variables c)}
@@ -127,16 +130,17 @@ applyLocal mut cur = modify $ \c ->
        }
 {-# INLINE applyLocal #-}
 
-stepNext :: Ctx m => Document Tag -> Cursor -> m Cursor
-stepNext d c@(Cursor (viewl -> Seq.EmptyL) (next -> getNextKey)) = get >>= \ctx -> do
-  let nextKey = getNextKey (document ctx)
-  case (nextKey /= Key Tail, Set.null (getPresence nextKey (document ctx))) of
-    (True, True) -> pure (Cursor mempty nextKey)
-    (True, False) -> stepNext d (Cursor mempty nextKey)
-    (False, _) -> pure c
-stepNext d c@(Cursor (viewl -> (x :< xs)) _) = maybe (pure c) f (findChild x d)
-  where f = fmap ((`setFinalKey` c) . finalKey) . (`stepNext` (setPath xs c))
-stepNext _ c = pure c
+stepNext :: Document Tag -> Cursor -> Cursor
+stepNext d c@(Cursor (viewl -> Seq.EmptyL) (next -> getNextKey)) =
+  let nextKey = getNextKey d
+      newCur = Cursor mempty nextKey
+  in case (nextKey /= Key Tail, Set.null (getPresence nextKey d)) of
+    (True, True) -> stepNext d newCur
+    (True, False) -> newCur
+    (False, _) -> c
+stepNext d c@(Cursor (viewl -> (x :< xs)) _) = maybe c f (findChild x d)
+  where f nd = setFinalKey (finalKey $ stepNext nd (setPath xs c)) c
+stepNext _ c = c
 
 eval :: Ctx m => Expr -> m Result
 eval Doc = pure $ Cursor Seq.empty $ unTag docKey
@@ -147,7 +151,7 @@ eval (GetKey expr k) = do
     _ -> pure (appendWith MapT k cursor)
 eval (Var var) = get >>= maybe (throwError (UndefinedVariable var)) pure . lookupCtx var
 eval (Iter expr) = appendWith ListT (Key Head) <$> eval expr
-eval (Next expr) = get >>= \(document -> d) -> eval expr >>= stepNext d
+eval (Next expr) = get >>= \(document -> d) -> stepNext d <$> eval expr
 
 execute :: Ctx m => Cmd -> m ()
 execute (Let x expr) = eval expr >>= addVariable (Variable x)
