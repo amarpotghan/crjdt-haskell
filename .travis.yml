@@ -13,4 +13,4 @@ install:
   - stack setup --no-terminal
 
 script:
-  - stack test --no-terminal --fast
+  - stack test --no-terminal --skip-ghc-check
