@@ -130,18 +130,6 @@ applyLocal mut cur = modify $ \c ->
        }
 {-# INLINE applyLocal #-}
 
-stepNext :: Document Tag -> Cursor -> Cursor
-stepNext d c@(Cursor (viewl -> Seq.EmptyL) (next -> getNextKey)) =
-  let nextKey = getNextKey d
-      newCur = Cursor mempty nextKey
-  in case (nextKey /= Key Tail, Set.null (getPresence nextKey d)) of
-    (True, True) -> stepNext d newCur
-    (True, False) -> newCur
-    (False, _) -> c
-stepNext d c@(Cursor (viewl -> (x :< xs)) _) = maybe c f (findChild x d)
-  where f nd = setFinalKey (finalKey $ stepNext nd (setPath xs c)) c
-stepNext _ c = c
-
 eval :: Ctx m => Expr -> m Result
 eval Doc = pure $ Cursor Seq.empty $ unTag docKey
 eval (GetKey expr k) = do

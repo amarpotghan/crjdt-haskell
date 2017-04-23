@@ -33,6 +33,7 @@ module Data.Crjdt.Context
   , appendWith
   , docKey
   , prettyOperation
+  , stepNext
   ) where
 
 import Data.Void
@@ -189,6 +190,19 @@ clear deps key = get >>= (clear' <*> findChild key)
       modify (\d' -> addChild key d' d)
       pure presence
     {-# INLINE clearBranch #-}
+
+stepNext :: Document Tag -> Cursor -> Cursor
+stepNext d c@(Cursor (viewl -> Seq.EmptyL) (next -> getNextKey)) =
+  let nextKey = getNextKey d
+      newCur = Cursor mempty nextKey
+  in case (nextKey /= Key Tail, Set.null (getPresence nextKey d)) of
+    (True, True) -> stepNext d newCur
+    (True, False) -> newCur
+    (False, _) -> c
+
+stepNext d c@(Cursor (viewl -> (x :< xs)) _) = maybe c f (findChild x d)
+  where f nd = setFinalKey (finalKey $ stepNext nd (setPath xs c)) c
+stepNext _ c = c
 
 addChild :: Key Tag -> Document Tag -> Document Tag -> Document Tag
 addChild _ _ d@(LeafDocument _) = d
