@@ -65,30 +65,30 @@ spec = describe "Figures from CRJDT paper" $ do
   it "Figure 2" $ do
     let r1 = Let "var" (GetKey Doc "colors")
           :> Assign (GetKey (Var "var") "blue") (StringLit "#0000ff")
-        r2 = r1
+        (_, r1result) = run 1 $ execute r1
 
         r1Next = r1
-          :> Let "var1" (GetKey Doc "colors")
           :> Assign (GetKey (Var "var") "red") (StringLit "#ff0000")
 
-        r2Next = r2
-          :> Assign (GetKey Doc "colors") EmptyObject
-          :> Let "var2" (GetKey Doc "colors")
-          :> Assign (GetKey (Var "var") "green") (StringLit "#00ff00”")
+        r2Next = putRemote (queue r1result) *> execute Yield *> execute (
+          Assign (GetKey Doc "colors") EmptyObject
+          :> Assign (GetKey (GetKey Doc "colors") "green") (StringLit "#00ff00”"))
 
         (r1r, r1State) = run 1 (execute r1Next *> keysOf (GetKey Doc "colors"))
-        (r2r, r2State) = run 2 (execute r2Next *> keysOf (GetKey Doc "colors"))
+        (r2r, r2State) = run 2 (r2Next *> keysOf (GetKey Doc "colors"))
 
         r1Final = execute r1Next *> putRemote (queue r2State) *> execute Yield *> keysOf (GetKey Doc "colors")
-        r2Final = execute r2Next *> putRemote (queue r1State) *> execute Yield *> keysOf (GetKey Doc "colors")
+        r2Final = r2Next *> putRemote (queue r1State) *> execute Yield *> keysOf (GetKey Doc "colors")
 
         (Right keys1, finalResult1) = run 1 r1Final
         (Right keys2, finalResult2) = run 2 r2Final
 
     keys1 `shouldBe` keys2
+    keys1 `shouldBe` Set.fromList ["red", "green"]
 
     document finalResult1 `shouldBe` document finalResult2
     history finalResult1 `shouldBe` history finalResult2
+
 
   it "Figure 6" $ do
     let cmd = Assign Doc EmptyObject

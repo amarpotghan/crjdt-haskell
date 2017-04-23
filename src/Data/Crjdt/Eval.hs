@@ -34,8 +34,6 @@ import Data.Crjdt.Types
 import Data.Crjdt.Context
 import Data.Crjdt.Internal.Core
 
-import Data.Foldable as Foldable
-
 data EvalError
   = GetOnHead
   | UndefinedVariable Var
