@@ -273,7 +273,7 @@ applyOp o@Operation{..} d = case viewl (path opCur) of
                 , opMutation = AssignMutation val
                 } d
           in case newDoc of
-               BranchDocument b -> BranchDocument $ b
+               BranchDocument b@Branch{branchTag = ListT} -> BranchDocument $ b
                  { keyOrder = M.insert (I opId) (basicKey nextKey) . M.insert (basicKey key) (I opId) $ keyOrder b}
                nd -> nd
 
