@@ -233,9 +233,9 @@ clearList child deps = put child *> clearList' (Key Head)
       pure (p1 `mappend` p2)
 
 addId :: Mutation -> Key Tag -> Id -> Document Tag -> Document Tag
+addId DeleteMutation _ _ d = d
 addId _ t i (BranchDocument b) = BranchDocument b
   { presence = M.alter (maybe (Just $ Set.singleton i) (Just . Set.insert i)) (unTag t) $ presence b }
-addId DeleteMutation _ _ d = d
 addId _ _ _ d = d
 
 applyOp :: Operation -> Document Tag -> Document Tag
