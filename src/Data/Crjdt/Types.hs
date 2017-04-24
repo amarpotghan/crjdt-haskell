@@ -25,7 +25,10 @@ instance IsString Var where
 data TaggedKey tag = TK
   { tag :: !tag
   , key :: !BasicKey
-  } deriving (Eq, Show, Functor, Foldable, Traversable)
+  } deriving (Eq, Functor, Foldable, Traversable)
+
+instance Show tag => Show (TaggedKey tag) where
+  show (TK t k) = show (t, k)
 
 instance Serial m tag => Serial m (TaggedKey tag) where
   series = cons2 TK
@@ -70,13 +73,18 @@ instance Eq tag => Eq (Key tag) where
 type ReplicaId = Integer
 type GlobalReplicaCounter = Integer
 
-data Id = Id
-  { sequenceNumber :: GlobalReplicaCounter
-  , replicaNumber :: ReplicaId
-  } deriving (Show, Eq, Ord)
+newtype Id = Id { getId :: (GlobalReplicaCounter, ReplicaId) } deriving (Eq, Ord)
+
+instance Show Id where
+  show = show . getId
+
+sequenceNumber = fst . getId
+replicaNumber = snd . getId
+
+mkId sn rid = Id (sn, rid)
 
 instance Monad m => Serial m Id where
-  series = cons2 Id
+  series = newtypeCons Id
 
 tagWith :: tag -> BasicKey -> Key tag
 tagWith t = TaggedKey . TK t

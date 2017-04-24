@@ -116,7 +116,7 @@ applyRemote = get >>= \c ->
 applyLocal :: Ctx m => Mutation -> Cursor -> m ()
 applyLocal mut cur = modify $ \c ->
   let op = Operation
-        { opId = Id (replicaGlobal c + 1) (replicaId c)
+        { opId = mkId (replicaGlobal c + 1) (replicaId c)
         , opDeps = history c
         , opCur = cur
         , opMutation = mut

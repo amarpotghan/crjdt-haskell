@@ -39,10 +39,10 @@ spec = describe "Figures from CRJDT paper" $ do
     history r1Result `shouldBe` history r2Result
 
     let
-      p = Set.fromList [Id 1 1, Id 1 2, Id 2 1, Id 2 2]
+      p = Set.fromList [mkId 1 1, mkId 1 2, mkId 2 1, mkId 2 2]
       docPresence = Map.fromList [(Key DocKey, p)]
       keyPresence = Map.fromList [("key", p)]
-      leaf = RegDocument $ Map.fromList $ [(Id 2 1, StringLit "C"),(Id 2 2, StringLit "D")]
+      leaf = RegDocument $ Map.fromList $ [(mkId 2 1, StringLit "C"),(mkId 2 2, StringLit "D")]
 
       innerMap = Branch
         { children = Map.fromList [(tagWith RegT (Str "key"), LeafDocument leaf)]
