@@ -146,9 +146,11 @@ spec = describe "Figures from CRJDT paper" $ do
         (Right (), r1St) = run 1 $ execute r1Next
         (Right (), r2St) = run 2 $ r2Next
 
-        (Right (), r1Final) = run 1 (execute r1Next *> putRemote (queue r2St) *> execute Yield)
-        (Right (), r2Final) = run 2 (r2Next *> putRemote (queue r1St) *> execute Yield)
+        (Right keys1, r1Final) = run 1 (execute r1Next *> putRemote (queue r2St) *> execute Yield *> keysOf (Next $ Iter $ GetKey Doc "todo"))
+        (Right keys2, r2Final) = run 2 (r2Next *> putRemote (queue r1St) *> execute Yield *> keysOf (Next $ Iter $ GetKey Doc "todo"))
 
+    keys1 `shouldBe` keys2
+    keys1 `shouldBe` Set.fromList ["done"]
     document r1Final `shouldBe` document r2Final
 
   it "Figure 6" $ do
