@@ -104,6 +104,7 @@ lookupCtx v = M.lookup v . variables
 
 getPresence :: Key Void -> Document Tag -> Set Id
 getPresence k (BranchDocument (Branch {branchTag = ListT, ..})) = fromMaybe mempty (M.lookup k presence)
+getPresence k (BranchDocument (Branch {branchTag = MapT, ..})) = fromMaybe mempty (M.lookup k presence)
 getPresence _ _ = mempty
 
 next :: Key Void -> Document Tag -> Key Void
@@ -227,7 +228,7 @@ clearList child deps = put child *> clearList' (Key Head)
     clearList' (Key Tail) = pure mempty
     clearList' hasMore = do
       nextt <- next hasMore <$> get
-      p1 <- clearElem deps nextt
+      p1 <- clearElem deps hasMore
       p2 <- clearList' nextt
       pure (p1 `mappend` p2)
 
