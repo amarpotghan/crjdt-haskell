@@ -133,6 +133,24 @@ spec = describe "Figures from CRJDT paper" $ do
     it "Empty object update" $ test EmptyObject
     it "Empty list update" $ test EmptyArray
 
+  it "Figure 4" $ do
+    let cmd = Let "todo" (Iter (GetKey Doc "todo"))
+          :> InsertAfter (Var "todo") EmptyObject
+          :> Assign (GetKey (Next $ Var "todo") "title") (StringLit "buy milk")
+          :> Assign (GetKey (Next $ Var "todo") "done") (StringLit "false")
+
+        (Right (), cmdResult) = run 1 $ execute cmd
+        r1Next = cmd :> Delete (Next $ Var "todo")
+        r2 = Assign (GetKey (Next $ Iter $ GetKey Doc "todo") "done") (StringLit "true")
+        r2Next = putRemote (queue cmdResult) *> execute Yield *> execute r2
+        (Right (), r1St) = run 1 $ execute r1Next
+        (Right (), r2St) = run 2 $ r2Next
+
+        (Right (), r1Final) = run 1 (execute r1Next *> putRemote (queue r2St) *> execute Yield)
+        (Right (), r2Final) = run 2 (r2Next *> putRemote (queue r1St) *> execute Yield)
+
+    document r1Final `shouldBe` document r2Final
+
   it "Figure 6" $ do
     let cmd = Assign Doc EmptyObject
           :> Let "list" (Iter (GetKey Doc "shopping"))
