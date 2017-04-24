@@ -89,6 +89,49 @@ spec = describe "Figures from CRJDT paper" $ do
     document finalResult1 `shouldBe` document finalResult2
     history finalResult1 `shouldBe` history finalResult2
 
+  it "Figure 3" $ do
+    let cmd1 = Assign (GetKey Doc "grocery") EmptyArray
+          :> InsertAfter (Iter (GetKey Doc "grocery")) (StringLit "eggs")
+          :> Let "eggs" (Next (Iter (GetKey Doc "grocery")))
+          :> InsertAfter (Var "eggs") (StringLit "ham")
+
+    let cmd2 = Assign (GetKey Doc "grocery") EmptyArray
+          :> InsertAfter (Iter (GetKey Doc "grocery")) (StringLit "milk")
+          :> Let "milk" (Next (Iter (GetKey Doc "grocery")))
+          :> InsertAfter (Var "milk") (StringLit "flour")
+    let (Right (), r1State) = run 1 $ execute cmd1
+        (Right (), r2State) = run 2 $ execute cmd2
+
+    let getValues = do
+          eggs <- valuesOf (Var "eggs")
+          milk <- valuesOf (Next $ Var "eggs")
+          ham <- valuesOf (Next $ Next $ Var "eggs")
+          flour <- valuesOf (Next $ Next $ Next $ Var "eggs")
+          pure (eggs ++ milk ++ ham ++ flour)
+
+    let (Right xs, r1Final) = run 1 (execute cmd1 *> putRemote (queue r2State) *> execute Yield *> getValues)
+        (Right (), r2Final) = run 2 (execute cmd2 *> putRemote (queue r1State) *> execute Yield)
+
+
+    xs `shouldBe` [StringLit "eggs", StringLit "milk", StringLit "ham", StringLit "flour"]
+
+    document r1Final  `shouldBe` document r2Final
+    -- grocery `shouldBe` expectedGrocery
+
+  describe "Empty updates" $ do
+    let test what = do
+          let cmd = Assign (GetKey Doc "g") what
+              cmd1 = cmd
+              (Right (), r) = run 1 $ execute cmd
+              (Right (), r1) = run 2 $ execute cmd1
+
+          let (Right (), x1) = run 1 (execute cmd *> putRemote (queue r1) *> execute Yield)
+              (Right (), x2) = run 2 (execute cmd1 *> putRemote (queue r) *> execute Yield)
+
+          document x1 `shouldBe` document x2
+
+    it "Empty object update" $ test EmptyObject
+    it "Empty list update" $ test EmptyArray
 
   it "Figure 6" $ do
     let cmd = Assign Doc EmptyObject
