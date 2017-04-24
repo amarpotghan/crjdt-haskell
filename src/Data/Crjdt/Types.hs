@@ -25,16 +25,13 @@ instance IsString Var where
 data TaggedKey tag = TK
   { tag :: !tag
   , key :: !BasicKey
-  } deriving (Eq, Functor, Foldable, Traversable)
+  } deriving (Eq, Ord, Functor, Foldable, Traversable)
 
 instance Show tag => Show (TaggedKey tag) where
   show (TK t k) = show (t, k)
 
 instance Serial m tag => Serial m (TaggedKey tag) where
   series = cons2 TK
-
-instance Eq tag => Ord (TaggedKey tag) where
-  compare (TK _ k1) (TK _ k2) = k1 `compare` k2
 
 -- TODO: rethink about this type
 data Key tag where
@@ -55,7 +52,9 @@ data BasicKey
 instance Monad m => Serial m BasicKey where
   series = cons0 DocKey \/ cons0 Head \/ cons0 Tail \/ cons1 I \/ cons1 (Str . pack)
 
-deriving instance Eq tag => Ord (Key tag)
+instance (Ord tag, Eq tag) => Ord (Key tag) where
+  (Key k) `compare` (Key k1) = k `compare` k1
+  (TaggedKey k) `compare` (TaggedKey k1) = k `compare` k1
 
 instance IsString (Key Void) where
   fromString = Key . Str . fromString
