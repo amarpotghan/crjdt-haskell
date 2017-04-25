@@ -14,9 +14,12 @@ module Data.Crjdt
   , (=:)
   , string
   , yield
+  , keys
+  , values
   ) where
 
 import Data.Text as T
+import Data.Set (Set)
 import Data.Void
 import Control.Monad.Free (liftF)
 
@@ -63,3 +66,9 @@ insert e v = liftF (InsertAfter e v ())
 
 delete :: Expr -> Command ()
 delete e = liftF (Delete e ())
+
+keys :: Expr -> Command (Set (Key Void))
+keys e = liftF (Keys e id)
+
+values :: Expr -> Command [Val]
+values e = liftF (Values e id)

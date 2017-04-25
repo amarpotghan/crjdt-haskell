@@ -80,7 +80,7 @@ execEval rid = (`execState` (initial rid)) . runExceptT . runEval
 
 valuesOf :: Ctx m => Expr -> m [Val]
 valuesOf e = partsOf e RegT $ \case
-  (LeafDocument l) -> M.elems (values l)
+  (LeafDocument l) -> M.elems (registers l)
   _ -> mempty
 
 keysOf :: Ctx m => Expr -> m (Set.Set (Key Void))
@@ -154,6 +154,8 @@ execCmd (Assign expr v c) = (eval expr >>= applyLocal (AssignMutation v)) >> c
 execCmd (InsertAfter expr v c) = (eval expr >>= applyLocal (InsertMutation v)) >> c
 execCmd (Delete expr c) = (eval expr >>= applyLocal DeleteMutation) >> c
 execCmd (Yield c) = applyRemote >> c
+execCmd (Values expr c) = valuesOf expr >>= c
+execCmd (Keys expr c) = keysOf expr >>= c
 
 execute :: Ctx m => Command a -> m a
 execute = iterM execCmd

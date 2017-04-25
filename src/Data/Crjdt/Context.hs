@@ -148,7 +148,7 @@ prettyOperation Operation{..} =
      ++ "cur = " ++ show cursor
      ++ " )"
 
-newtype RegDocument = RegDocument { values :: M.Map Id Val } deriving (Show, Eq, Monoid)
+newtype RegDocument = RegDocument { registers :: M.Map Id Val } deriving (Show, Eq, Monoid)
 
 data Branch tag = Branch
   { children :: Map (Key tag) (Document tag)
@@ -180,7 +180,7 @@ clear deps key = get >>= (clear' <*> findChild key)
   where
     clear' _ Nothing = pure mempty
     clear' d (Just (LeafDocument reg)) = put (addChild key (LeafDocument $ RegDocument c) d) *> pure (M.keysSet c)
-      where c = M.filterWithKey (\k _ -> k `Set.notMember` deps) $ values reg
+      where c = M.filterWithKey (\k _ -> k `Set.notMember` deps) $ registers reg
     clear' d (Just child@(BranchDocument (Branch  {branchTag = MapT}))) = clearBranch d $ clearMap child
     clear' d (Just child@(BranchDocument (Branch {branchTag = ListT}))) = clearBranch d $ clearList child
     clear' _ _ = pure mempty -- this should never happen. TODO: Capture this in type of Document.

@@ -7,8 +7,10 @@ module Data.Crjdt.Internal.Core where
 import Test.SmallCheck.Series
 import Data.Text
 import Data.Void
-import Data.Crjdt.Types
+import Data.Set (Set)
 import Control.Monad.Free
+
+import Data.Crjdt.Types
 
 data Val
   = Number Int
@@ -39,6 +41,8 @@ data Cmd a
   | Assign !Expr !Val a
   | InsertAfter !Expr !Val a
   | Delete !Expr a
+  | Values !Expr ([Val] -> a)
+  | Keys !Expr (Set (Key Void) -> a)
   | Yield a
   deriving Functor
 
