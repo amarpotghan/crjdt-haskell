@@ -29,6 +29,7 @@ import Data.Foldable (traverse_)
 import Control.Monad.Fix
 import Control.Monad.State
 import Control.Monad.Except
+import Control.Monad.Free (iterM)
 
 import Data.Crjdt.Types
 import Data.Crjdt.Context
@@ -139,10 +140,20 @@ eval (Var var) = get >>= maybe (throwError (UndefinedVariable var)) pure . looku
 eval (Iter expr) = appendWith ListT (Key Head) <$> eval expr
 eval (Next expr) = get >>= \(document -> d) -> stepNext d <$> eval expr
 
-execute :: Ctx m => Cmd -> m ()
-execute (Let x expr) = eval expr >>= addVariable (Variable x)
-execute (Assign expr value) = eval expr >>= applyLocal (AssignMutation value)
-execute (InsertAfter expr value) = eval expr >>= applyLocal (InsertMutation value)
-execute (Delete expr) = eval expr >>= applyLocal DeleteMutation
-execute Yield = applyRemote
-execute (cmd1 :> cmd2) = execute cmd1 *> execute cmd2
+-- execute :: Ctx m => Cmd -> m ()
+-- execute (Let x expr) = eval expr >>= addVariable (Variable x)
+-- execute (Assign expr value) = eval expr >>= applyLocal (AssignMutation value)
+-- execute (InsertAfter expr value) = eval expr >>= applyLocal (InsertMutation value)
+-- execute (Delete expr) = eval expr >>= applyLocal DeleteMutation
+-- execute Yield = applyRemote
+-- execute (cmd1 :> cmd2) = execute cmd1 *> execute cmd2
+
+execCmd :: Ctx m => Cmd (m a) -> m a
+execCmd (Let x expr c) = (eval expr >>= \cur -> addVariable (Variable x) cur *> pure (Var $ Variable x)) >>= c
+execCmd (Assign expr v c) = (eval expr >>= applyLocal (AssignMutation v)) >> c
+execCmd (InsertAfter expr v c) = (eval expr >>= applyLocal (InsertMutation v)) >> c
+execCmd (Delete expr c) = (eval expr >>= applyLocal DeleteMutation) >> c
+execCmd (Yield c) = applyRemote >> c
+
+execute :: Ctx m => Command a -> m a
+execute = iterM execCmd

@@ -16,27 +16,28 @@ module Data.Crjdt
   , yield
   ) where
 
+import Data.Text as T
+import Data.Void
+import Control.Monad.Free (liftF)
+
 import Data.Crjdt.Context as Core
 import Data.Crjdt.Types as Core
 import Data.Crjdt.Eval as Core
-
 import Data.Crjdt.Internal
-import Data.Text as T
-import Data.Void
 
 emptyMap, emptyList :: Val
 emptyMap = EmptyObject
 emptyList = EmptyArray
 
-yield :: Cmd
-yield = Yield
+yield :: Command ()
+yield = liftF (Yield ())
 
-assign, (=:) :: Expr -> Val -> Cmd
-assign = Assign
+assign, (=:) :: Expr -> Val -> Command ()
+assign e v = liftF (Assign e v ())
 (=:) = assign
 
-bind, (-<) :: Text -> Expr -> Cmd
-bind = Let
+bind, (-<) :: Text -> Expr -> Command Expr
+bind t e = liftF (Let t e id)
 (-<) = bind
 
 string :: Text -> Val
@@ -57,8 +58,8 @@ doc = Doc
 var :: Text -> Expr
 var = Var . Variable
 
-insert :: Expr -> Val -> Cmd
-insert = InsertAfter
+insert :: Expr -> Val -> Command ()
+insert e v = liftF (InsertAfter e v ())
 
-delete :: Expr -> Cmd
-delete = Delete
+delete :: Expr -> Command ()
+delete e = liftF (Delete e ())

@@ -25,6 +25,7 @@ library
                      , text
                      , containers
                      , mtl
+                     , free
                      , smallcheck
   default-language:    Haskell2010
 

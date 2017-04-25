@@ -5,7 +5,9 @@ import Data.Crjdt
 import Data.Crjdt.Internal
 
 main :: IO ()
-main = print example
+main = pure ()
 
-example :: Cmd
-example = Let "x" (Var "y")
+example :: Command Expr
+example = do
+  x <- bind "x" (keyOf doc "s")
+  pure x

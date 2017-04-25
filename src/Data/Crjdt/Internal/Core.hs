@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
@@ -7,6 +8,7 @@ import Test.SmallCheck.Series
 import Data.Text
 import Data.Void
 import Data.Crjdt.Types
+import Control.Monad.Free
 
 data Val
   = Number Int
@@ -32,16 +34,26 @@ instance Monad m => Serial m Val where
     cons0 EmptyObject \/
     cons0 EmptyArray
 
-data Cmd
-  = Let !Text !Expr
-  | Assign !Expr !Val
-  | InsertAfter !Expr !Val
-  | Delete !Expr
-  | Yield
-  | !Cmd :> !Cmd
-  deriving (Show, Eq)
+data Cmd a
+  = Let !Text !Expr (Expr -> a)
+  | Assign !Expr !Val a
+  | InsertAfter !Expr !Val a
+  | Delete !Expr a
+  | Yield a
+  deriving Functor
 
-infixr 6 :>
+-- data Cmd
+--   = Let !Text !Expr
+--   | Assign !Expr !Val
+--   | InsertAfter !Expr !Val
+--   | Delete !Expr
+--   | Yield
+--   | !Cmd :> !Cmd
+--   deriving (Show, Eq)
+
+type Command a = Free Cmd a
+
+-- infixr 6 :>
 
 data Expr
   = Doc

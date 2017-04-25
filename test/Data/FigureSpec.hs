@@ -63,16 +63,19 @@ spec = describe "Figures from CRJDT paper" $ do
     document r1Result `shouldBe` d
 
   it "Figure 2" $ do
-    let r1 = "var" -< keyOf doc "colors"
-          :> keyOf (var "var") "blue" =: string "#0000ff"
+    let r1 = do
+          var <- bind "var" (keyOf doc "colors")
+          keyOf var "blue" =: string "#0000ff"
+
         (_, r1result) = run 1 $ execute r1
 
-        r1nextOf = r1
-          :> keyOf (var "var") "red" =: string "#ff0000"
+        r1nextOf = do
+          r1
+          keyOf (var "var") "red" =: string "#ff0000"
 
-        r2nextOf = putRemote (queue r1result) *> execute yield *> execute (
-          keyOf doc "colors" =: emptyMap
-          :> keyOf (keyOf doc "colors") "green" =: string "#00ff00”"
+        r2nextOf = putRemote (queue r1result) *> execute yield *> execute (do
+            keyOf doc "colors" =: emptyMap
+            keyOf (keyOf doc "colors") "green" =: string "#00ff00”"
           )
 
         (r1r, r1State) = run 1 (execute r1nextOf *> keysOf (keyOf doc "colors"))
@@ -91,15 +94,17 @@ spec = describe "Figures from CRJDT paper" $ do
     history finalResult1 `shouldBe` history finalResult2
 
   it "Figure 3" $ do
-    let cmd1 = keyOf doc "grocery" =: emptyList
-          :> C.insert (iter (keyOf doc "grocery")) (string "eggs")
-          :> "eggs" -< nextOf (iter (keyOf doc "grocery"))
-          :> C.insert (var "eggs") (string "ham")
+    let cmd1 = do
+          keyOf doc "grocery" =: emptyList
+          C.insert (iter (keyOf doc "grocery")) (string "eggs")
+          eggs <- bind "eggs" (nextOf (iter (keyOf doc "grocery")))
+          C.insert eggs (string "ham")
 
-    let cmd2 = keyOf doc "grocery" =: emptyMap
-          :> C.insert (iter (keyOf doc "grocery")) (string "milk")
-          :> "milk" -< (nextOf (iter (keyOf doc "grocery")))
-          :> C.insert (var "milk") (string "flour")
+    let cmd2 = do
+          keyOf doc "grocery" =: emptyMap
+          C.insert (iter (keyOf doc "grocery")) (string "milk")
+          milk <- bind "milk" (nextOf (iter (keyOf doc "grocery")))
+          C.insert milk (string "flour")
     let (Right (), r1State) = run 1 $ execute cmd1
         (Right (), r2State) = run 2 $ execute cmd2
 
@@ -135,13 +140,14 @@ spec = describe "Figures from CRJDT paper" $ do
     it "Empty list update" $ test emptyList
 
   it "Figure 4" $ do
-    let cmd = "todo" -< iter (keyOf doc "todo")
-          :> C.insert (var "todo") emptyMap
-          :> keyOf (nextOf $ var "todo") "title" =: string "buy milk"
-          :> keyOf (nextOf $ var "todo") "done" =: string "false"
+    let cmd = do
+          todo <- "todo" -< iter (keyOf doc "todo")
+          C.insert (var "todo") emptyMap
+          keyOf (nextOf $ var "todo") "title" =: string "buy milk"
+          keyOf (nextOf $ var "todo") "done" =: string "false"
 
         (Right (), cmdResult) = run 1 $ execute cmd
-        r1nextOf = cmd :> C.delete (nextOf $ var "todo")
+        r1nextOf = cmd *> C.delete (nextOf $ var "todo")
         r2 = keyOf (nextOf $ iter $ keyOf doc "todo") "done" =: string "true"
         r2nextOf = putRemote (queue cmdResult) *> execute yield *> execute r2
         (Right (), r1St) = run 1 $ execute r1nextOf
@@ -155,12 +161,14 @@ spec = describe "Figures from CRJDT paper" $ do
     document r1Final `shouldBe` document r2Final
 
   it "Figure 6" $ do
-    let cmd = doc =: emptyMap
-          :> "list" -< (iter (keyOf doc "shopping"))
-          :> C.insert (var "list") (string "eggs")
-          :> "eggs" -< (nextOf (var "list"))
-          :> C.insert (var "eggs") (string "milk")
-          :> C.insert (var "list") (string "cheese")
+    let cmd = do
+          doc =: emptyMap
+          list <- bind "list" (iter (keyOf doc "shopping"))
+          C.insert list (string "eggs")
+          eggs <- bind "eggs" (nextOf list)
+          C.insert eggs (string "milk")
+          C.insert list (string "cheese")
+
         (Right xs, _) = run 1 $ (execute cmd) *> do
           eggs <- valuesOf (var "eggs")
           milk <- valuesOf (nextOf (var "eggs"))

@@ -27,12 +27,12 @@ spec = describe "Crjdt Specs" $ do
       evalEval 1 Doc `shouldBe` Right (Cursor mempty (Key DocKey))
 
     it "LET" $ sproperty $ \(expr, name) ->
-      let Just cursor = M.lookup name (variables $ execEval 1 (execute (Let (getName name) expr)))
+      let Just cursor = M.lookup name (variables $ execEval 1 (execute (bind (getName name) expr)))
           Right expectedCursor = evalEval 1 expr
       in cursor == expectedCursor
 
     it "VAR" $ sproperty $ \x expr ->
-      let (result, c) = run 1 $ execute (Let (getName x) expr) *> eval (Var x)
+      let (result, c) = run 1 $ execute (bind (getName x) expr) *> eval (Var x)
           v = M.lookup x (variables c)
       in v == eitherToMaybe result
 
