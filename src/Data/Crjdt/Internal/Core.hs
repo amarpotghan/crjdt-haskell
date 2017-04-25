@@ -9,6 +9,7 @@ import Data.Text
 import Data.Void
 import Data.Set (Set)
 import Control.Monad.Free
+import Data.String
 
 import Data.Crjdt.Types
 
@@ -20,6 +21,9 @@ data Val
   | EmptyObject
   | EmptyArray
   deriving (Show, Eq)
+
+instance IsString Val where
+  fromString = StringLit . pack
 
 prettyVal :: Val -> String
 prettyVal (Number i) = show i
@@ -62,12 +66,13 @@ type Command a = Free Cmd a
 data Expr
   = Doc
   | Var !Var
-  -- | Keys Expr
-  -- | Values Expr
   | Iter !Expr
   | Next !Expr
   | GetKey !Expr !(Key Void)
   deriving (Show, Eq)
+
+instance IsString Expr where
+  fromString = Var . fromString
 
 instance Monad m => Serial m Expr where
   series =

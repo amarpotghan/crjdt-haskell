@@ -17,11 +17,11 @@ spec = describe "Figures from CRJDT paper" $ do
 
   it "Figure 1" $ do
     let
-      initial = execute (key "key" doc =: string "A")
+      initial = execute (key "key" doc =: "A")
       r1 = initial
       r2 = initial
-      r1next = r1 *> execute (key "key" doc =: string "C")
-      r2next = r2 *> execute (key "key" doc =: string "D")
+      r1next = r1 *> execute (key "key" doc =: "C")
+      r2next = r2 *> execute (key "key" doc =: "D")
 
       (fr, firstState) = run 1 r1next
       (sr, secondState) = run 2 r2next
@@ -42,7 +42,7 @@ spec = describe "Figures from CRJDT paper" $ do
       p = Set.fromList [mkId 1 1, mkId 1 2, mkId 2 1, mkId 2 2]
       docPresence = Map.fromList [(Key DocKey, p)]
       keyPresence = Map.fromList [("key", p)]
-      leaf = RegDocument $ Map.fromList $ [(mkId 2 1, string "C"),(mkId 2 2, string "D")]
+      leaf = RegDocument $ Map.fromList $ [(mkId 2 1, "C"),(mkId 2 2, "D")]
 
       innerMap = Branch
         { children = Map.fromList [(tagWith RegT (Str "key"), LeafDocument leaf)]
@@ -65,17 +65,17 @@ spec = describe "Figures from CRJDT paper" $ do
   it "Figure 2" $ do
     let r1 = do
           var <- bind "var" (key "colors" doc)
-          key "blue" var =: string "#0000ff"
+          key "blue" var =: "#0000ff"
 
         (_, r1result) = run 1 $ execute r1
 
         r1next = do
           r1
-          key "red" (var "var") =: string "#ff0000"
+          key "red" "var" =: "#ff0000"
 
         r2next = putRemote (queue r1result) *> execute yield *> execute (do
             key "colors" doc =: emptyMap
-            key "green" (key "colors" doc) =: string "#00ff00”"
+            key "green" (key "colors" doc) =: "#00ff00”"
           )
 
         (r1r, r1State) = run 1 $ execute (r1next *> keys (key "colors" doc))
@@ -96,30 +96,30 @@ spec = describe "Figures from CRJDT paper" $ do
   it "Figure 3" $ do
     let cmd1 = do
           key "grocery" doc =: emptyList
-          C.insert (iter (key "grocery" doc)) (string "eggs")
+          C.insert (iter (key "grocery" doc)) "eggs"
           eggs <- bind "eggs" (next (iter (key "grocery" doc)))
-          C.insert eggs (string "ham")
+          C.insert eggs "ham"
 
     let cmd2 = do
           key "grocery" doc =: emptyMap
-          C.insert (iter (key "grocery" doc)) (string "milk")
+          C.insert (iter (key "grocery" doc)) "milk"
           milk <- bind "milk" (next (iter (key "grocery" doc)))
-          C.insert milk (string "flour")
+          C.insert milk "flour"
     let (Right (), r1State) = run 1 $ execute cmd1
         (Right (), r2State) = run 2 $ execute cmd2
 
     let getValues = do
-          eggs <- values (var "eggs")
-          milk <- values (next $ var "eggs")
-          ham <- values (next $ next $ var "eggs")
-          flour <- values (next $ next $ next $ var "eggs")
+          eggs <- values "eggs"
+          milk <- values (next $ "eggs")
+          ham <- values (next $ next $ "eggs")
+          flour <- values (next $ next $ next $ "eggs")
           pure (eggs ++ milk ++ ham ++ flour)
 
     let (Right xs, r1Final) = run 1 (execute cmd1 *> putRemote (queue r2State) *> execute (yield *> getValues))
         (Right (), r2Final) = run 2 (execute cmd2 *> putRemote (queue r1State) *> execute yield)
 
 
-    xs `shouldBe` [string "eggs", string "milk", string "ham", string "flour"]
+    xs `shouldBe` ["eggs", "milk", "ham", "flour"]
 
     document r1Final  `shouldBe` document r2Final
     -- grocery `shouldBe` expectedGrocery
@@ -142,13 +142,13 @@ spec = describe "Figures from CRJDT paper" $ do
   it "Figure 4" $ do
     let cmd = do
           todo <- "todo" -< iter (key "todo" doc)
-          C.insert (var "todo") emptyMap
-          key "title" (next $ var "todo") =: string "buy milk"
-          key "done" (next $ var "todo") =: string "false"
+          C.insert "todo" emptyMap
+          key "title" (next $ "todo") =: "buy milk"
+          key "done" (next $ "todo") =: "false"
 
         (Right (), cmdResult) = run 1 $ execute cmd
-        r1next = cmd *> C.delete (next $ var "todo")
-        r2 = key "done" (next $ iter $ key "todo" doc) =: string "true"
+        r1next = cmd *> C.delete (next $ "todo")
+        r2 = key "done" (next $ iter $ key "todo" doc) =: "true"
         r2next = putRemote (queue cmdResult) *> execute yield *> execute r2
         (Right (), r1St) = run 1 $ execute r1next
         (Right (), r2St) = run 2 $ r2next
@@ -163,17 +163,16 @@ spec = describe "Figures from CRJDT paper" $ do
   it "Figure 6" $ do
     let cmd = do
           doc =: emptyMap
-          -- doc ->> "shopping" iter
-          list <- bind "list" (iter (key "shopping" doc))
-          C.insert list (string "eggs")
+          list <- bind "list" $ doc .> key "shopping" .> iter
+          C.insert list "eggs"
           eggs <- bind "eggs" (next list)
-          C.insert eggs (string "milk")
-          C.insert list (string "cheese")
+          C.insert eggs "milk"
+          C.insert list "cheese"
 
         (Right xs, _) = run 1 $ execute $ cmd *> do
-          eggs <- values (var "eggs")
-          milk <- values (next (var "eggs"))
-          cheese <- values (next (next (var "eggs")))
+          eggs <- values "eggs"
+          milk <- values ("eggs" .> next)
+          cheese <- values ("eggs" .> next .> next)
           pure (eggs ++ milk ++ cheese)
 
-    xs `shouldBe` [string "eggs", string "milk", string "cheese"]
+    xs `shouldBe` ["eggs", "milk", "cheese"]
