@@ -16,6 +16,8 @@ module Data.Crjdt
   , yield
   , keys
   , values
+  , Void
+  , (.>)
   ) where
 
 import Data.Text as T
@@ -27,6 +29,9 @@ import Data.Crjdt.Context as Core
 import Data.Crjdt.Types as Core
 import Data.Crjdt.Eval as Core
 import Data.Crjdt.Internal
+
+(.>) :: b -> (b -> a) -> a
+(.>) b f = f b
 
 emptyMap, emptyList :: Val
 emptyMap = EmptyObject
