@@ -96,15 +96,15 @@ spec = describe "Figures from CRJDT paper" $ do
   it "Figure 3" $ do
     let cmd1 = do
           key "grocery" doc =: emptyList
-          C.insert (iter (key "grocery" doc)) "eggs"
+          C.insert "eggs" (iter $ key "grocery" doc)
           eggs <- bind "eggs" (next (iter (key "grocery" doc)))
-          C.insert eggs "ham"
+          C.insert "ham" eggs
 
     let cmd2 = do
           key "grocery" doc =: emptyMap
-          C.insert (iter (key "grocery" doc)) "milk"
+          C.insert "milk" (iter (key "grocery" doc))
           milk <- bind "milk" (next (iter (key "grocery" doc)))
-          C.insert milk "flour"
+          C.insert "flour" milk
     let (Right (), r1State) = run 1 $ execute cmd1
         (Right (), r2State) = run 2 $ execute cmd2
 
@@ -142,7 +142,7 @@ spec = describe "Figures from CRJDT paper" $ do
   it "Figure 4" $ do
     let cmd = do
           todo <- "todo" -< iter (key "todo" doc)
-          C.insert "todo" emptyMap
+          C.insert emptyMap "todo"
           key "title" (next $ "todo") =: "buy milk"
           key "done" (next $ "todo") =: "false"
 
@@ -164,10 +164,10 @@ spec = describe "Figures from CRJDT paper" $ do
     let cmd = do
           doc =: emptyMap
           list <- bind "list" $ doc .> key "shopping" .> iter
-          C.insert list "eggs"
+          C.insert "eggs" list
           eggs <- bind "eggs" (next list)
-          C.insert eggs "milk"
-          C.insert list "cheese"
+          C.insert "milk" eggs
+          C.insert "cheese" list
 
         (Right xs, _) = run 1 $ execute $ cmd *> do
           eggs <- values "eggs"

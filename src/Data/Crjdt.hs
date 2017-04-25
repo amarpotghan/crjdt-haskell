@@ -66,8 +66,8 @@ doc = Doc
 var :: Text -> Expr
 var = Var . Variable
 
-insert :: Expr -> Val -> Command ()
-insert e v = liftF (InsertAfter e v ())
+insert :: Val -> Expr -> Command ()
+insert v e = liftF (InsertAfter e v ())
 
 delete :: Expr -> Command ()
 delete e = liftF (Delete e ())
