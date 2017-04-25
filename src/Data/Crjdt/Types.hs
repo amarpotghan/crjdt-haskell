@@ -24,7 +24,7 @@ instance IsString Var where
 
 data TaggedKey tag = TK
   { tag :: !tag
-  , key :: !BasicKey
+  , getKey :: !BasicKey
   } deriving (Eq, Ord, Functor, Foldable, Traversable)
 
 instance Show tag => Show (TaggedKey tag) where

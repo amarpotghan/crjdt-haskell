@@ -9,5 +9,5 @@ main = pure ()
 
 example :: Command Expr
 example = do
-  x <- bind "x" (keyOf doc "s")
+  x <- bind "x" (key "s" doc)
   pure x

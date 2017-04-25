@@ -3,8 +3,8 @@ module Data.Crjdt
   , bind
   , (-<)
   , iter
-  , nextOf
-  , keyOf
+  , next
+  , key
   , doc
   , var
   , insert
@@ -49,11 +49,11 @@ string = StringLit
 iter :: Expr -> Expr
 iter = Iter
 
-nextOf :: Expr -> Expr
-nextOf = Next
+next :: Expr -> Expr
+next = Next
 
-keyOf :: Expr -> Key Void -> Expr
-keyOf = GetKey
+key :: Key Void -> Expr -> Expr
+key = flip GetKey
 
 doc :: Expr
 doc = Doc

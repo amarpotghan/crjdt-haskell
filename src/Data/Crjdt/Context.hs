@@ -25,7 +25,6 @@ module Data.Crjdt.Context
   , RegDocument(..)
   , findChild
   , applyOp
-  , next
   , getPresence
   , setPath
   , setFinalKey
