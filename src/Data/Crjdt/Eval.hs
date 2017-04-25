@@ -9,8 +9,8 @@
 module Data.Crjdt.Eval
   ( Eval(..)
   , EvalError(..)
-  , keysOf
-  , valuesOf
+  -- , keysOf
+  -- , valuesOf
   , run
   , evalEval
   , execEval

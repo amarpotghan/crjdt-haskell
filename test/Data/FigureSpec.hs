@@ -4,7 +4,7 @@ module Data.FigureSpec where
 
 import Test.Hspec
 
-import Data.Map as Map hiding (insert)
+import Data.Map as Map hiding (insert, keys)
 import Data.Set as Set
 import Control.Monad.State
 
@@ -78,11 +78,11 @@ spec = describe "Figures from CRJDT paper" $ do
             keyOf (keyOf doc "colors") "green" =: string "#00ff00”"
           )
 
-        (r1r, r1State) = run 1 (execute r1nextOf *> keysOf (keyOf doc "colors"))
-        (r2r, r2State) = run 2 (r2nextOf *> keysOf (keyOf doc "colors"))
+        (r1r, r1State) = run 1 $ execute (r1nextOf *> keys (keyOf doc "colors"))
+        (r2r, r2State) = run 2 (r2nextOf *> execute (keys (keyOf doc "colors")))
 
-        r1Final = execute r1nextOf *> putRemote (queue r2State) *> execute yield *> keysOf (keyOf doc "colors")
-        r2Final = r2nextOf *> putRemote (queue r1State) *> execute yield *> keysOf (keyOf doc "colors")
+        r1Final = execute r1nextOf *> putRemote (queue r2State) *> execute (yield *> keys (keyOf doc "colors"))
+        r2Final = r2nextOf *> putRemote (queue r1State) *> execute (yield *> keys (keyOf doc "colors"))
 
         (Right keys1, finalResult1) = run 1 r1Final
         (Right keys2, finalResult2) = run 2 r2Final
@@ -109,13 +109,13 @@ spec = describe "Figures from CRJDT paper" $ do
         (Right (), r2State) = run 2 $ execute cmd2
 
     let getValues = do
-          eggs <- valuesOf (var "eggs")
-          milk <- valuesOf (nextOf $ var "eggs")
-          ham <- valuesOf (nextOf $ nextOf $ var "eggs")
-          flour <- valuesOf (nextOf $ nextOf $ nextOf $ var "eggs")
+          eggs <- values (var "eggs")
+          milk <- values (nextOf $ var "eggs")
+          ham <- values (nextOf $ nextOf $ var "eggs")
+          flour <- values (nextOf $ nextOf $ nextOf $ var "eggs")
           pure (eggs ++ milk ++ ham ++ flour)
 
-    let (Right xs, r1Final) = run 1 (execute cmd1 *> putRemote (queue r2State) *> execute yield *> getValues)
+    let (Right xs, r1Final) = run 1 (execute cmd1 *> putRemote (queue r2State) *> execute (yield *> getValues))
         (Right (), r2Final) = run 2 (execute cmd2 *> putRemote (queue r1State) *> execute yield)
 
 
@@ -153,8 +153,8 @@ spec = describe "Figures from CRJDT paper" $ do
         (Right (), r1St) = run 1 $ execute r1nextOf
         (Right (), r2St) = run 2 $ r2nextOf
 
-        (Right keys1, r1Final) = run 1 (execute r1nextOf *> putRemote (queue r2St) *> execute yield *> keysOf (nextOf $ iter $ keyOf doc "todo"))
-        (Right keys2, r2Final) = run 2 (r2nextOf *> putRemote (queue r1St) *> execute yield *> keysOf (nextOf $ iter $ keyOf doc "todo"))
+        (Right keys1, r1Final) = run 1 (execute r1nextOf *> putRemote (queue r2St) *> execute (yield *> keys (nextOf $ iter $ keyOf doc "todo")))
+        (Right keys2, r2Final) = run 2 (r2nextOf *> putRemote (queue r1St) *> execute (yield *> keys (nextOf $ iter $ keyOf doc "todo")))
 
     keys1 `shouldBe` keys2
     keys1 `shouldBe` Set.fromList ["done"]
@@ -169,10 +169,10 @@ spec = describe "Figures from CRJDT paper" $ do
           C.insert eggs (string "milk")
           C.insert list (string "cheese")
 
-        (Right xs, _) = run 1 $ (execute cmd) *> do
-          eggs <- valuesOf (var "eggs")
-          milk <- valuesOf (nextOf (var "eggs"))
-          cheese <- valuesOf (nextOf (nextOf (var "eggs")))
+        (Right xs, _) = run 1 $ execute $ cmd *> do
+          eggs <- values (var "eggs")
+          milk <- values (nextOf (var "eggs"))
+          cheese <- values (nextOf (nextOf (var "eggs")))
           pure (eggs ++ milk ++ cheese)
 
     xs `shouldBe` [string "eggs", string "milk", string "cheese"]
