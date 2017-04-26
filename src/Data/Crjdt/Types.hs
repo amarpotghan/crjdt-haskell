@@ -9,15 +9,11 @@
 
 module Data.Crjdt.Types where
 
-import Test.SmallCheck.Series
 import Data.String
 import Data.Text
 import Data.Void
 
 newtype Var = Variable { getName :: Text } deriving (Show, Eq, Ord)
-
-instance Monad m => Serial m Var where
-  series = newtypeCons (Variable .  pack)
 
 instance IsString Var where
   fromString = Variable . fromString
@@ -30,16 +26,10 @@ data TaggedKey tag = TK
 instance Show tag => Show (TaggedKey tag) where
   show (TK t k) = show (t, k)
 
-instance Serial m tag => Serial m (TaggedKey tag) where
-  series = cons2 TK
-
 -- TODO: rethink about this type
 data Key tag where
   Key :: BasicKey -> Key Void
   TaggedKey :: TaggedKey tag -> Key tag
-
-instance Monad m => Serial m (Key Void) where
-  series = Key <$> series
 
 data BasicKey
   = DocKey
@@ -48,9 +38,6 @@ data BasicKey
   | I Id
   | Str Text
   deriving (Show, Eq, Ord)
-
-instance Monad m => Serial m BasicKey where
-  series = cons0 DocKey \/ cons0 Head \/ cons0 Tail \/ cons1 I \/ cons1 (Str . pack)
 
 instance (Ord tag, Eq tag) => Ord (Key tag) where
   (Key k) `compare` (Key k1) = k `compare` k1
@@ -81,9 +68,6 @@ sequenceNumber = fst . getId
 replicaNumber = snd . getId
 
 mkId sn rid = Id (sn, rid)
-
-instance Monad m => Serial m Id where
-  series = newtypeCons Id
 
 tagWith :: tag -> BasicKey -> Key tag
 tagWith t = TaggedKey . TK t

@@ -9,8 +9,6 @@
 module Data.Crjdt.Eval
   ( Eval(..)
   , EvalError(..)
-  -- , keysOf
-  -- , valuesOf
   , run
   , evalEval
   , execEval
@@ -50,11 +48,8 @@ newtype Eval a = Eval
   , MonadError EvalError
   , MonadState Context
   )
+
 type Result = Cursor
-  -- = Ks [Key Void]
-  -- \| Vs [Val]
-  -- \| Mark Cursor
-  -- deriving (Show, Eq)
 
 initial :: ReplicaId -> Context
 initial rid = Context

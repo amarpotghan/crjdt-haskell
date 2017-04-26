@@ -42,7 +42,6 @@ import Data.Sequence (ViewL(..), viewl)
 import qualified Data.Sequence as Seq
 import Data.Map as M
 import Data.Set as Set
-import Test.SmallCheck.Series
 import Control.Monad.State
 
 import Data.Crjdt.Types
@@ -53,9 +52,6 @@ data Tag
   | ListT
   | RegT
   deriving (Show, Eq, Ord)
-
-instance Monad m => Serial m Tag where
-  series = cons0 MapT \/ cons0 ListT \/ cons0 RegT
 
 data Context = Context
   { document :: Document Tag
