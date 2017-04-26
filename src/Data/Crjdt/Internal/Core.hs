@@ -50,18 +50,7 @@ data Cmd a
   | Yield a
   deriving Functor
 
--- data Cmd
---   = Let !Text !Expr
---   | Assign !Expr !Val
---   | InsertAfter !Expr !Val
---   | Delete !Expr
---   | Yield
---   | !Cmd :> !Cmd
---   deriving (Show, Eq)
-
 type Command a = Free Cmd a
-
--- infixr 6 :>
 
 data Expr
   = Doc
