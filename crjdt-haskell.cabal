@@ -1,18 +1,18 @@
-name:                crjdt-haskell
-version:             0.1.0.0
--- synopsis:
--- description:
-homepage:            https://github.com/githubuser/crjdt-haskell#readme
-license:             BSD3
-license-file:        LICENSE
-author:              Amar Potghan
-maintainer:          amarpotghan@gmail.com
-copyright:           2017 Amar Potghan
-category:            Data
-build-type:          Simple
-extra-source-files:  README.md
-cabal-version:       >=1.10
+name:          crjdt-haskell
+version:       0.1.0.0
+synopsis:      Haskell implementation of JSON CRDT - https://arxiv.org/pdf/1608.03960v1.pdf
+description:   Haskell implementation of JSON CRDT - https://arxiv.org/pdf/1608.03960v1.pdf
+homepage:      https://github.com/amarpotghan/crjdt-haskell#readme
+license:       BSD3
+license-file:  LICENSE
+author:        Amar Potghan
+maintainer:    amarpotghan@gmail.com
+copyright:     2017 Amar Potghan
+category:      Data
+build-type:    Simple
+cabal-version: >=1.10
 
+extra-source-files:  README.md
 library
   hs-source-dirs:      src
   exposed-modules:     Data.Crjdt
@@ -22,20 +22,21 @@ library
                      , Data.Crjdt.Internal
                      , Data.Crjdt.Internal.Core
   build-depends:       base >= 4.7 && < 5
-                     , text
-                     , containers
-                     , mtl
-                     , free
+                     , text >= 0.11.1.0 && < 1.3
+                     , containers >= 0.5.0.0  && < 0.6
+                     , mtl >= 2.2.1 && < 2.3
+                     , free >= 4.6.1 && < 5
   default-language:    Haskell2010
 
 test-suite crjdt-haskell-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
+  test-module:         Data
   build-depends:       base
                      , crjdt-haskell
                      , hspec
-                     , containers
+                     , containers >= 0.5.0.0  && < 0.6
                      , mtl
                      , hedgehog >= 0.1
   test-module:   Data.CrjdtSpec
