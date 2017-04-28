@@ -99,17 +99,19 @@ getPresence :: Key Void -> Document Tag -> Set Id
 getPresence k =  fromMaybe mempty . ((M.lookup k . presence) =<<) . branchOf
 
 next :: Key Void -> Document Tag -> Key Void
-next (Key key) (BranchDocument (Branch {branchTag = ListT, ..})) = Key $ fromMaybe Tail $
-  M.lookup key keyOrder
-next _ _ = Key Tail
+next (Key key) d = Key $ fromMaybe Tail $ next'
+  where
+    next' = branchOf d >>= ensureList >>= M.lookup key . keyOrder
+    ensureList b@Branch{branchTag = ListT} = Just b
+    ensureList _ = Nothing
+next k _ = k
 
 updatePresence :: Key Void -> Set Id -> Document tag -> Document tag
-updatePresence key deps (BranchDocument b) = BranchDocument newBranch
-  where newBranch =
+updatePresence key deps d = fromMaybe d . fmap (BranchDocument . newBranch) . branchOf $ d
+  where newBranch b =
           if (Set.null deps)
           then b { presence = M.delete key (presence b) }
           else b { presence = M.insert key deps $ presence b }
-updatePresence _ _ d = d
 
 branchOf :: Document tag -> Maybe (Branch tag)
 branchOf (LeafDocument _) = Nothing
