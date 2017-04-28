@@ -98,9 +98,8 @@ lookupCtx :: Var -> Context -> Maybe Cursor
 lookupCtx v = M.lookup v . variables
 
 getPresence :: Key Void -> Document Tag -> Set Id
-getPresence k (BranchDocument (Branch {branchTag = ListT, ..})) = fromMaybe mempty (M.lookup k presence)
-getPresence k (BranchDocument (Branch {branchTag = MapT, ..})) = fromMaybe mempty (M.lookup k presence)
-getPresence _ _ = mempty
+getPresence _ (LeafDocument _) = mempty
+getPresence k (BranchDocument (Branch {..})) = fromMaybe mempty (M.lookup k presence)
 
 next :: Key Void -> Document Tag -> Key Void
 next (Key key) (BranchDocument (Branch {branchTag = ListT, ..})) = Key $ fromMaybe Tail $
