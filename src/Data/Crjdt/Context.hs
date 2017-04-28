@@ -83,9 +83,7 @@ setPath newpath c = c { path = newpath }
 
 -- still avoiding lens, but almost there :-)
 findChild :: Key Tag -> Document Tag -> Maybe (Document Tag)
-findChild t (BranchDocument (Branch {branchTag = ListT, ..})) = M.lookup t children
-findChild t (BranchDocument (Branch {branchTag = MapT, ..})) = M.lookup t children
-findChild _ _ = Nothing
+findChild t = ((M.lookup t . children) =<<) . branchOf
 
 childGet :: Key Tag -> Document Tag -> Document Tag
 childGet k = fromMaybe (choose (getTag k)) . findChild k
@@ -98,8 +96,7 @@ lookupCtx :: Var -> Context -> Maybe Cursor
 lookupCtx v = M.lookup v . variables
 
 getPresence :: Key Void -> Document Tag -> Set Id
-getPresence _ (LeafDocument _) = mempty
-getPresence k (BranchDocument (Branch {..})) = fromMaybe mempty (M.lookup k presence)
+getPresence k =  fromMaybe mempty . ((M.lookup k . presence) =<<) . branchOf
 
 next :: Key Void -> Document Tag -> Key Void
 next (Key key) (BranchDocument (Branch {branchTag = ListT, ..})) = Key $ fromMaybe Tail $
@@ -107,11 +104,16 @@ next (Key key) (BranchDocument (Branch {branchTag = ListT, ..})) = Key $ fromMay
 next _ _ = Key Tail
 
 updatePresence :: Key Void -> Set Id -> Document tag -> Document tag
-updatePresence key (Set.null -> True) (BranchDocument b) = BranchDocument b
-  { presence = M.delete key (presence b) }
-updatePresence key newPresence (BranchDocument b) = BranchDocument b
-  { presence = M.insert key newPresence $ presence b }
+updatePresence key deps (BranchDocument b) = BranchDocument newBranch
+  where newBranch =
+          if (Set.null deps)
+          then b { presence = M.delete key (presence b) }
+          else b { presence = M.insert key deps $ presence b }
 updatePresence _ _ d = d
+
+branchOf :: Document tag -> Maybe (Branch tag)
+branchOf (LeafDocument _) = Nothing
+branchOf (BranchDocument b) = Just b
 
 data Mutation
   = InsertMutation Val
@@ -175,10 +177,12 @@ clear deps key = get >>= (clear' <*> findChild key)
     clear' _ Nothing = pure mempty
     clear' d (Just (LeafDocument reg)) = put (addChild key (LeafDocument $ RegDocument c) d) *> pure (M.keysSet c)
       where c = M.filterWithKey (\k _ -> k `Set.notMember` deps) $ registers reg
-    clear' d (Just child@(BranchDocument (Branch  {branchTag = MapT}))) = clearBranch d $ clearMap child
-    clear' d (Just child@(BranchDocument (Branch {branchTag = ListT}))) = clearBranch d $ clearList child
-    clear' _ _ = pure mempty -- this should never happen. TODO: Capture this in type of Document.
+    clear' d (Just b)  = fromMaybe (pure mempty) (fmap (clearBranch d) (branchOf b >>= (`chooseClear` b) . branchTag))
     {-# INLINE clear' #-}
+
+    chooseClear ListT = Just . clearList
+    chooseClear MapT = Just . clearMap
+    chooseClear RegT = const Nothing
 
     clearBranch d clearWhich = do
       presence <- clearWhich deps
