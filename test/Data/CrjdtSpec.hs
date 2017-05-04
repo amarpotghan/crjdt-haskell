@@ -32,12 +32,12 @@ twenty = Range.linear 0 20
 
 keyGen :: Monad m => Gen m BasicKey
 keyGen = Gen.choice $ (pure <$> [Head, Tail, DocKey]) ++
-  [ I . Id <$> (liftA2 (fmap (bimap toInteger toInteger) . (,)) positiveInts positiveInts)
+  [ I . Id <$> (liftA2 (fmap (bimap toInteger toInteger) . (,)) naturals naturals)
   , Str <$> Gen.text twenty Gen.hexit
   ]
 
-positiveInts :: Monad m => Gen m Int
-positiveInts = Gen.int (Range.linear 0 1000)
+naturals :: Monad m => Gen m Int
+naturals = Gen.int (Range.linear 0 1000)
 
 exprGen :: Gen IO Expr
 exprGen = Gen.recursive Gen.choice terminal nonterminal
