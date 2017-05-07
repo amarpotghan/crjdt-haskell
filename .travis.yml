@@ -2,6 +2,10 @@ sudo: false
 
 language: c
 
+env:
+  - STACK_YAML=stack.yaml
+  - STACK_YAML=stack-7.10.yaml
+
 cache:
   directories:
   - $HOME/.stack

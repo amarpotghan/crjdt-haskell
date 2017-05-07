@@ -1,6 +1,8 @@
-resolver: lts-8.13
+resolver: lts-6.22
 extra-dep:
   - hedgehog
+extra-deps:
+  - wl-pprint-annotated-0.0.1.4
 packages:
   - '.'
   - location:
