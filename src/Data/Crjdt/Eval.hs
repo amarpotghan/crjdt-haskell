@@ -33,7 +33,6 @@ import Data.Crjdt.Types
 import Data.Crjdt.Context
 import Data.Crjdt.Internal.Core
 
-
 data EvalError
   = GetOnHead
   | UndefinedVariable Var
