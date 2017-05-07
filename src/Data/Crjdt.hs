@@ -18,6 +18,7 @@ module Data.Crjdt
   , values
   , Void
   , (.>)
+  , Command(..)
   ) where
 
 import Data.Text as T
