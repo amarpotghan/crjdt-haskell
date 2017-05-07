@@ -147,10 +147,10 @@ bind t e = liftF (Let t e id)
 -----------------------------------------------------------------------------------------------
 -- Utility functions
 
-sync :: Command () -> Command () -> IO (Eval (), Eval ())
-sync first second =
-  let (rFirst, sFirst) = run 1 (Eval.execute first)
-      (rSecond, sSecond) = run 2 (Eval.execute second)
+sync :: (ReplicaId, Command ()) -> (ReplicaId, Command ()) -> IO (Eval (), Eval ())
+sync (rid1, first) (rid2, second) =
+  let (rFirst, sFirst) = run rid1 (Eval.execute first)
+      (rSecond, sSecond) = run rid2 (Eval.execute second)
       synced which replica = do
         Eval.execute which
         addReceivedOps (queue replica)
