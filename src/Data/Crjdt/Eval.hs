@@ -146,4 +146,4 @@ execCmd (Values expr c) = valuesOf expr >>= c
 execCmd (Keys expr c) = keysOf expr >>= c
 
 execute :: Ctx m => Command a -> m a
-execute = iterM execCmd
+execute = iterM execCmd . runCommand

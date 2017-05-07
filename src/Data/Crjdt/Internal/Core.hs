@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Data.Crjdt.Internal.Core where
 
@@ -8,6 +9,7 @@ import Data.Text
 import Data.Void
 import Data.Set (Set)
 import Control.Monad.Free
+import Control.Applicative
 import Data.String
 
 import Data.Crjdt.Types
@@ -40,7 +42,13 @@ data Cmd a
   | Yield a
   deriving Functor
 
-type Command a = Free Cmd a
+newtype Command a = Command { runCommand :: Free Cmd a }
+  deriving
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadFree Cmd
+    )
 
 data Expr
   = Doc
