@@ -26,12 +26,6 @@ data Val
 instance IsString Val where
   fromString = StringLit . pack
 
-prettyVal :: Val -> String
-prettyVal (Number i) = show i
-prettyVal (BoolLit i) = show i
-prettyVal (StringLit i) = show i
-prettyVal x = show x
-
 data Cmd a
   = Let !Text !Expr (Expr -> a)
   | Assign !Expr !Val a

@@ -31,7 +31,6 @@ module Data.Crjdt.Context
   , lookupCtx
   , appendWith
   , docKey
-  , prettyOperation
   , stepNext
   ) where
 
@@ -129,22 +128,6 @@ data Operation = Operation
   , opCur :: Cursor
   , opMutation :: Mutation
   } deriving (Eq, Show)
-
-prettyOperation :: Operation -> String
-prettyOperation Operation{..} =
-  let oid = (sequenceNumber opId, replicaNumber opId)
-      cursor = (Foldable.toList $ path opCur, finalKey opCur)
-      mut = case opMutation of
-        InsertMutation v -> "Insert " `mappend` prettyVal v
-        AssignMutation v -> "Assign " `mappend` prettyVal v
-        DeleteMutation -> "Delete"
-
-  in "( "
-     ++ "id = " ++ show oid ++ ", "
-     ++ "deps = " ++ show (Set.toList opDeps) ++ ", "
-     ++ "mut = " ++ mut ++ ", "
-     ++ "cur = " ++ show cursor
-     ++ " )"
 
 newtype RegDocument = RegDocument { registers :: M.Map Id Val } deriving (Show, Eq, Monoid)
 
