@@ -1,7 +1,7 @@
 name:          crjdt-haskell
 version:       0.1.0.0
-synopsis:      Conflict-free replicated JSON in Haskell
-description:   Conflict-free replicated JSON in Haskell
+synopsis:      A Conflict-Free Replicated JSON Datatype for Haskell
+description:   A Conflict-Free Replicated JSON Datatype for Haskell
 homepage:      https://github.com/amarpotghan/crjdt-haskell#readme
 license:       BSD3
 license-file:  LICENSE
