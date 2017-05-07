@@ -1,6 +1,6 @@
 name:          crjdt-haskell
 version:       0.1.0.0
-synopsis:      Haskell implementation of JSON CRDT - https://arxiv.org/pdf/1608.03960v1.pdf
+synopsis:      Haskell implementation of JSON CRDT
 description:   Haskell implementation of JSON CRDT - https://arxiv.org/pdf/1608.03960v1.pdf
 homepage:      https://github.com/amarpotghan/crjdt-haskell#readme
 license:       BSD3
