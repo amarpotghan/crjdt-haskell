@@ -2,7 +2,7 @@
 
 # A Conflict-Free Replicated JSON Datatype for Haskell
 
-*crjdt-haskell* provides high level interface to CRDT which formalised in the [paper](https://arxiv.org/pdf/1608.03960v1.pdf) by Martin Kleppmann and Alastair R. Beresford.
+*crjdt-haskell* provides high level interface to CRDT which is formalised in the [paper](https://arxiv.org/pdf/1608.03960v1.pdf) by Martin Kleppmann and Alastair R. Beresford.
 
 ## Future work
 
