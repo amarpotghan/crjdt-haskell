@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 -- |This module exports all necessarry data types and functions for
 -- expressing and executing commands which allow modifying and
 -- querying the state of JSON in local replica
@@ -37,6 +38,8 @@ module Data.Crjdt
   , (.>)
   , (&)
 
+  -- * Others
+  , sync
   , module Core
   ) where
 
@@ -44,6 +47,7 @@ import Data.Text as T
 import Data.Set (Set)
 import Data.Void
 import Data.Function
+import Control.Exception (throwIO)
 import Control.Monad.Free (liftF)
 
 import Data.Crjdt.Context as Core
@@ -56,6 +60,8 @@ import Data.Crjdt.Internal
 
 (.>) :: b -> (b -> a) -> a
 (.>) = (&)
+
+infixl 4 .>
 
 -- |'emptyMap' corresponds to {}.
 emptyMap :: Val
@@ -131,7 +137,24 @@ assign, (=:) :: Expr -> Val -> Command ()
 assign e v = liftF (Assign e v ())
 (=:) = assign
 
+infixr 5 =:
+
 -- |Let binding.
 bind, (-<) :: Text -> Expr -> Command Expr
 bind t e = liftF (Let t e id)
 (-<) = bind
+
+-----------------------------------------------------------------------------------------------
+-- Utility functions
+
+sync :: Command () -> Command () -> IO (Eval (), Eval ())
+sync first second =
+  let (rFirst, sFirst) = run 1 (Eval.execute first)
+      (rSecond, sSecond) = run 2 (Eval.execute second)
+      synced which replica = do
+        Eval.execute which
+        addReceivedOps (queue replica)
+        Eval.execute yield
+  in case (rFirst *> rSecond) of
+    Right () -> pure $ (synced first sSecond, synced second sFirst)
+    Left ex -> throwIO ex

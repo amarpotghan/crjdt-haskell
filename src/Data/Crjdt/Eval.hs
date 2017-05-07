@@ -9,6 +9,7 @@
 module Data.Crjdt.Eval
   ( Eval(..)
   , EvalError(..)
+  , addReceivedOps
   , run
   , evalEval
   , execEval
@@ -24,6 +25,8 @@ import Data.Map as M
 import Data.Maybe (fromMaybe)
 import Data.Set as Set
 import Data.Foldable (traverse_)
+
+import Control.Exception (Exception)
 import Control.Monad.Fix
 import Control.Monad.State
 import Control.Monad.Except
@@ -37,6 +40,8 @@ data EvalError
   = GetOnHead
   | UndefinedVariable Var
   deriving (Show, Eq)
+
+instance Exception EvalError
 
 newtype Eval a = Eval
   { runEval :: ExceptT EvalError (State Context) a
@@ -94,6 +99,9 @@ partsOf e tag f = eval e >>= \c -> partsOf' c f . document <$> get
 addVariable :: Ctx m => Var -> Cursor -> m ()
 addVariable v cur = modify $ \c -> c { variables = M.insert v cur (variables c)}
 {-# INLINE addVariable #-}
+
+addReceivedOps :: MonadState Context m => Seq.Seq Operation -> m ()
+addReceivedOps ops = modify (\ctx -> ctx {received = ops `mappend` (received ctx)})
 
 applyRemote :: Ctx m => m ()
 applyRemote = get >>= \c ->
