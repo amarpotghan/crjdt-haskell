@@ -4,6 +4,10 @@
 
 *crjdt-haskell* provides high level interface to CRDT which is formalised in the [paper](https://arxiv.org/pdf/1608.03960v1.pdf) by Martin Kleppmann and Alastair R. Beresford.
 
+## Documentation
+
+See [haddocks](https://hackage.haskell.org/package/crjdt-haskell).
+
 ## Example
 
 ```haskell
@@ -44,6 +48,7 @@ main = do
 
 ## Future work
 
+* Improve documentation
 * Aeson support
 * Simplify API as described in [second version](https://arxiv.org/abs/1608.03960) of the paper
 
