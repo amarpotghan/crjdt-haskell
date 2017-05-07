@@ -32,15 +32,18 @@ module Data.Crjdt
   , Eval.eval
   , Eval.execute
 
-  -- * Others
+  -- * Re-exports
   , Void
   , (.>)
+  , (&)
+
   , module Core
   ) where
 
 import Data.Text as T
 import Data.Set (Set)
 import Data.Void
+import Data.Function
 import Control.Monad.Free (liftF)
 
 import Data.Crjdt.Context as Core
@@ -52,7 +55,7 @@ import Data.Crjdt.Eval as Core hiding (execute, eval)
 import Data.Crjdt.Internal
 
 (.>) :: b -> (b -> a) -> a
-(.>) b f = f b
+(.>) = (&)
 
 -- |'emptyMap' corresponds to {}.
 emptyMap :: Val
