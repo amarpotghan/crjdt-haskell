@@ -1,3 +1,6 @@
 .stack-work/
 *sandbox*
 dist/
+doc/
+build/
+
