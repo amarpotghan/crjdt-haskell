@@ -47,7 +47,9 @@ import Data.Text as T
 import Data.Set (Set)
 import Data.Void
 import Data.Function
+import Data.Bifunctor (bimap)
 import Control.Monad.Free (liftF)
+import Control.Applicative (liftA2)
 
 import Data.Crjdt.Context as Core
 import Data.Crjdt.Types as Core
@@ -146,7 +148,7 @@ bind t e = liftF (Let t e id)
 -----------------------------------------------------------------------------------------------
 -- Utility functions
 
-sync :: (ReplicaId, Command ()) -> (ReplicaId, Command ()) -> Either EvalError (Eval (), Eval ())
+sync :: (ReplicaId, Command a) -> (ReplicaId, Command b) -> Either EvalError (Eval a, Eval b)
 sync (rid1, first) (rid2, second) =
   let (rFirst, sFirst) = run rid1 (Eval.execute first)
       (rSecond, sSecond) = run rid2 (Eval.execute second)
@@ -154,6 +156,6 @@ sync (rid1, first) (rid2, second) =
         Eval.execute which
         addReceivedOps (queue replica)
         Eval.execute yield
-  in case (rFirst *> rSecond) of
-    Right () -> pure $ (synced first sSecond, synced second sFirst)
+  in case (liftA2 (,) rFirst rSecond) of
+    Right (a, b) -> pure $ bimap (a <$) (b <$) (synced first sSecond, synced second sFirst)
     Left ex -> Left ex
