@@ -36,7 +36,7 @@ replica2 = do
 main :: IO ()
 main = do
   -- Sync first and second replica
-  (r1, r2) <- sync (1, replica1) (2, replica2)
+  let Right (r1, r2) = sync (1, replica1) (2, replica2)
 
   let replica1' = execEval 1 r1
       replica2' = execEval 2 r2

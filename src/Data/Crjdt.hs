@@ -47,7 +47,6 @@ import Data.Text as T
 import Data.Set (Set)
 import Data.Void
 import Data.Function
-import Control.Exception (throwIO)
 import Control.Monad.Free (liftF)
 
 import Data.Crjdt.Context as Core
@@ -147,7 +146,7 @@ bind t e = liftF (Let t e id)
 -----------------------------------------------------------------------------------------------
 -- Utility functions
 
-sync :: (ReplicaId, Command ()) -> (ReplicaId, Command ()) -> IO (Eval (), Eval ())
+sync :: (ReplicaId, Command ()) -> (ReplicaId, Command ()) -> Either EvalError (Eval (), Eval ())
 sync (rid1, first) (rid2, second) =
   let (rFirst, sFirst) = run rid1 (Eval.execute first)
       (rSecond, sSecond) = run rid2 (Eval.execute second)
@@ -157,4 +156,4 @@ sync (rid1, first) (rid2, second) =
         Eval.execute yield
   in case (rFirst *> rSecond) of
     Right () -> pure $ (synced first sSecond, synced second sFirst)
-    Left ex -> throwIO ex
+    Left ex -> Left ex
