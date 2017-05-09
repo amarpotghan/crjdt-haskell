@@ -1,3 +1,7 @@
+0.3.0
+
+* Remove unnecessarry exports
+
 0.2.1
 
 * Generalize helper function sync
