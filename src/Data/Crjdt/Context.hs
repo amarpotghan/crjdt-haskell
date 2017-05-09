@@ -26,8 +26,6 @@ module Data.Crjdt.Context
   , findChild
   , applyOp
   , getPresence
-  , setPath
-  , setFinalKey
   , lookupCtx
   , appendWith
   , docKey
