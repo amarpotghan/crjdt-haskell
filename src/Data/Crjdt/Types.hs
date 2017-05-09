@@ -66,7 +66,6 @@ instance Show Id where
 
 sequenceNumber = fst . getId
 replicaNumber = snd . getId
-
 mkId sn rid = Id (sn, rid)
 
 tagWith :: tag -> BasicKey -> Key tag

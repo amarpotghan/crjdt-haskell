@@ -44,15 +44,15 @@ data EvalError
 instance Exception EvalError
 
 newtype Eval a = Eval
-  { runEval :: ExceptT EvalError (State Context) a
-  } deriving
-  ( Functor
-  , Applicative
-  , Monad
-  , MonadFix
-  , MonadError EvalError
-  , MonadState Context
-  )
+  { runEval :: ExceptT EvalError (State Context) a }
+  deriving
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadFix
+    , MonadError EvalError
+    , MonadState Context
+    )
 
 type Result = Cursor
 
@@ -115,7 +115,6 @@ applyRemote = get >>= \c ->
           , history = Set.insert (opId op) (history cc)
           }
   in traverse_ applyRemote' (received c)
-{-# INLINE applyRemote #-}
 
 applyLocal :: Ctx m => Mutation -> Cursor -> m ()
 applyLocal mut cur = modify $ \c ->
@@ -130,7 +129,6 @@ applyLocal mut cur = modify $ \c ->
        , history = Set.insert (opId op) (history c)
        , queue = queue c Seq.|> op
        }
-{-# INLINE applyLocal #-}
 
 eval :: Ctx m => Expr -> m Result
 eval Doc = pure $ Cursor Seq.empty $ unTag docKey
