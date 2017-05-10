@@ -1,7 +1,7 @@
 0.3.0
 
-* Remove unnecessarry exports
-* Fix fixity of (.>)
+* BREAKING CHANGE: Remove unnecessarry exports
+* BREAKING CHANGE: Fix fixity of (.>), it now binds more tightly than (=:)
 
 0.2.1
 
