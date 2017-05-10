@@ -1,6 +1,7 @@
 0.3.0
 
 * Remove unnecessarry exports
+* Fix fixity of (.>)
 
 0.2.1
 
