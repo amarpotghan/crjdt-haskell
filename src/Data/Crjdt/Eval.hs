@@ -54,8 +54,6 @@ newtype Eval a = Eval
     , MonadState Context
     )
 
-type Result = Cursor
-
 initial :: ReplicaId -> Context
 initial rid = Context
   { document = BranchDocument (Branch mempty mempty mempty MapT)
@@ -130,7 +128,7 @@ applyLocal mut cur = modify $ \c ->
        , queue = queue c Seq.|> op
        }
 
-eval :: Ctx m => Expr -> m Result
+eval :: Ctx m => Expr -> m Cursor
 eval Doc = pure $ Cursor Seq.empty $ unTag docKey
 eval (GetKey expr k) = do
   cursor <- eval expr
