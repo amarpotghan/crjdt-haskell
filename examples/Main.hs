@@ -9,15 +9,11 @@ original = doc .> key "key" =: "A"
 
 -- First replica updates doc["key"] to "B"
 replica1 :: Command ()
-replica1 = do
-  original
-  doc .> key "key" =: "B"
+replica1 = original *> doc .> key "key" =: "B"
 
 -- Second replica updates doc["key"] to "C"
 replica2 :: Command ()
-replica2 = do
-  original
-  doc .> key "key" =: "C"
+replica2 = original *> doc .> key "key" =: "C"
 
 main :: IO ()
 main = do
