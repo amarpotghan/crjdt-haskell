@@ -5,19 +5,19 @@ import Data.Crjdt as C
 
 -- Original state
 original :: Command ()
-original = (doc .> key "key") =: "A"
+original = doc .> key "key" =: "A"
 
 -- First replica updates doc["key"] to "B"
 replica1 :: Command ()
 replica1 = do
   original
-  (doc .> key "key") =: "B"
+  doc .> key "key" =: "B"
 
 -- Second replica updates doc["key"] to "C"
 replica2 :: Command ()
 replica2 = do
   original
-  (doc .> key "key") =: "C"
+  doc .> key "key" =: "C"
 
 main :: IO ()
 main = do

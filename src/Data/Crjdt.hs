@@ -62,7 +62,7 @@ import Data.Crjdt.Internal
 (.>) :: b -> (b -> a) -> a
 (.>) = (&)
 
-infixl 4 .>
+infixl 6 .>
 
 -- |'emptyMap' corresponds to {}.
 emptyMap :: Val
