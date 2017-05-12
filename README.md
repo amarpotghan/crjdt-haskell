@@ -48,6 +48,10 @@ main = do
 * Aeson support
 * Simplify API as described in [second version](https://arxiv.org/abs/1608.03960) of the paper
 
+## Other implementations
+
+* [Scala CRJDT](https://github.com/fthomas/crjdt)
+
 ## LICENSE
 
 Copyright © 2017 Amar Potghan
