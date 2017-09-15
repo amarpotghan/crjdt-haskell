@@ -161,17 +161,38 @@ clear deps key = get >>= (clear' <*> findChild key)
     clear' d (Just (LeafDocument reg)) = put (addChild key (LeafDocument $ RegDocument c) d) *> pure (M.keysSet c)
       where c = M.filterWithKey (\k _ -> k `Set.notMember` deps) $ registers reg
     clear' d (Just b)  = fromMaybe (pure mempty) (fmap (clearBranch d) (branchOf b >>= (`chooseClear` b) . branchTag))
-    {-# INLINE clear' #-}
-
-    chooseClear ListT = Just . clearList
-    chooseClear MapT = Just . clearMap
-    chooseClear RegT = const Nothing
 
     clearBranch d clearWhich = do
       presence <- clearWhich deps
       modify (\d' -> addChild key d' d)
       pure presence
-    {-# INLINE clearBranch #-}
+
+    chooseClear ListT = Just . clearList
+    chooseClear MapT = Just . clearMap
+    chooseClear RegT = const Nothing
+
+    clearMap, clearList :: Document Tag -> Set Id -> State (Document Tag) (Set Id)
+    clearMap child deps = put child *> clearMap' mempty
+      where
+        clearMap' acc = do
+          ms <- allKeys <$> get
+          case Set.toList (ms Set.\\ acc) of
+            [] -> pure mempty
+            (k: _) -> do
+              p1 <- clearElem deps (unTag k)
+              p2 <- clearMap' (Set.insert k acc)
+              pure (p1 `mappend` p2)
+        allKeys (BranchDocument (Branch {branchTag = MapT, ..})) = keysSet children
+        allKeys _ = mempty
+
+    clearList child deps = put child *> clearList' (Key Head)
+      where
+        clearList' (Key Tail) = pure mempty
+        clearList' hasMore = do
+          nextt <- next hasMore <$> get
+          p1 <- clearElem deps hasMore
+          p2 <- clearList' nextt
+          pure (p1 `mappend` p2)
 
 stepNext :: Document Tag -> Cursor -> Cursor
 stepNext d c@(Cursor (viewl -> Seq.EmptyL) (next -> getNextKey)) =
@@ -189,29 +210,6 @@ stepNext _ c = c
 addChild :: Key Tag -> Document Tag -> Document Tag -> Document Tag
 addChild _ _ d@(LeafDocument _) = d
 addChild key child (BranchDocument d) = BranchDocument d { children = M.insert key child (children d)}
-
-clearMap, clearList :: Document Tag -> Set Id -> State (Document Tag) (Set Id)
-clearMap child deps = put child *> clearMap' mempty
-  where
-    clearMap' acc = do
-      ms <- allKeys <$> get
-      case Set.toList (ms Set.\\ acc) of
-        [] -> pure mempty
-        (k: _) -> do
-          p1 <- clearElem deps (unTag k)
-          p2 <- clearMap' (Set.insert k acc)
-          pure (p1 `mappend` p2)
-    allKeys (BranchDocument (Branch {branchTag = MapT, ..})) = keysSet children
-    allKeys _ = mempty
-
-clearList child deps = put child *> clearList' (Key Head)
-  where
-    clearList' (Key Tail) = pure mempty
-    clearList' hasMore = do
-      nextt <- next hasMore <$> get
-      p1 <- clearElem deps hasMore
-      p2 <- clearList' nextt
-      pure (p1 `mappend` p2)
 
 addId :: Mutation -> Key Tag -> Id -> Document Tag -> Document Tag
 addId DeleteMutation _ _ d = d
@@ -240,9 +238,11 @@ applyOp o@Operation{..} d = case viewl (path opCur) of
           modify $ addId opMutation tagged opId
           child <- childGet tagged <$> get
           case child of
-            LeafDocument (RegDocument vals) -> do
-              modify (addChild tagged $ LeafDocument $ RegDocument (M.insert opId other vals))
-
+            LeafDocument (RegDocument vals) ->
+              modify
+              (addChild tagged $
+                  LeafDocument $
+                  RegDocument (M.insert opId other vals))
             branchChild -> modify (addChild tagged branchChild)
 
     InsertMutation val -> insert' nextKey
