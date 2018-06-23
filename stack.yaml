@@ -1,11 +1,1 @@
-resolver: lts-8.13
-extra-dep:
-  - hedgehog
-packages:
-  - '.'
-  - location:
-      git: https://github.com/hedgehogqa/haskell-hedgehog/
-      commit: 675780808c2e094cd4906a1d68c1c4203b2cfe15
-    subdirs:
-      - hedgehog
-    extra-dep: true
+resolver: lts-11.14
