@@ -6,7 +6,7 @@
 module Data.CrjdtSpec where
 
 import Test.Hspec
-import Hedgehog
+import Hedgehog hiding (eval, Var)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 import Data.Map as M hiding (empty)
@@ -30,16 +30,16 @@ eitherToMaybe _ = Nothing
 
 twenty = Range.linear 0 20
 
-keyGen :: Monad m => Gen m BasicKey
+keyGen :: Gen BasicKey
 keyGen = Gen.choice $ (pure <$> [Head, Tail, DocKey]) ++
   [ I . Id <$> (liftA2 (fmap (bimap toInteger toInteger) . (,)) naturals naturals)
   , Str <$> Gen.text twenty Gen.hexit
   ]
 
-naturals :: Monad m => Gen m Int
+naturals :: Gen Int
 naturals = Gen.int (Range.linear 0 1000)
 
-exprGen :: Gen IO Expr
+exprGen :: Gen Expr
 exprGen = Gen.recursive Gen.choice terminal nonterminal
   where
     terminal = [pure doc]

@@ -2,10 +2,6 @@ sudo: false
 
 language: c
 
-env:
-  - STACK_YAML=stack.yaml
-  - STACK_YAML=stack-7.10.yaml
-
 cache:
   directories:
   - $HOME/.stack
@@ -22,4 +18,6 @@ install:
   - stack setup --no-terminal
 
 script:
-  - stack test --no-terminal --skip-ghc-check
+  - STACK_YAML=stack.yaml stack test --no-terminal --skip-ghc-check
+  - STACK_YAML=stack-7.10.yaml stack build --no-terminal --skip-ghc-check
+  - STACK_YAML=stack-8.0.2.yaml stack build --no-terminal --skip-ghc-check
