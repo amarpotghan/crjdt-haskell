@@ -54,6 +54,6 @@ main = do
 
 ## LICENSE
 
-Copyright © 2017 Amar Potghan
+Copyright © 2017-2018 Amar Potghan
 
 Distributed under BSD License.
